@@ -98,6 +98,11 @@ def analyze_direct(
             "dividend": filing_data.income_data.dividend or 0,
             "rental_income": filing_data.income_data.rental_income or 0,
             "professional_fees": filing_data.income_data.professional_fees or 0,
+            "tds_deducted": filing_data.income_data.tds_deducted or 0,
+            "hra_received": filing_data.income_data.hra_received or 0,
+            "other_sources": filing_data.income_data.other_sources or 0,
+            "short_term_capital_gains": filing_data.income_data.short_term_capital_gains or 0,
+            "long_term_capital_gains": filing_data.income_data.long_term_capital_gains or 0,
             "age": current_user.age or 30,
             "total_income": (
                 (filing_data.income_data.salary or 0) +
@@ -160,6 +165,34 @@ def analyze_direct(
             income_data["total_income"]
         )
         
+        # Persist the completed analysis for the home and history views.
+        saved_filing = TaxFiling(
+            user_id=current_user.id,
+            filing_year=filing_data.filing_year,
+            status="analyzed",
+            salary=filing_data.income_data.salary,
+            interest=filing_data.income_data.interest,
+            dividend=filing_data.income_data.dividend,
+            rental_income=filing_data.income_data.rental_income,
+            professional_fees=filing_data.income_data.professional_fees,
+            total_income=income_data["total_income"],
+            investments_80c=filing_data.deductions_data.investments,
+            health_insurance_80d=filing_data.deductions_data.health_insurance,
+            education_loan_80e=filing_data.deductions_data.education_loan_interest,
+            home_loan_interest_80emi=filing_data.deductions_data.home_loan_interest,
+            donations_80g=filing_data.deductions_data.donations,
+            total_deductions=tax_result["deductions"]["total_deductions"],
+            taxable_income=tax_result["tax_old_regime"]["taxable_income"],
+            tax_old_regime=tax_result["tax_old_regime"]["total_tax"],
+            tax_new_regime=tax_result["tax_new_regime"]["total_tax"],
+            recommended_regime=tax_result["recommendation"]["recommended_regime"],
+            tax_agent_output=json.dumps(tax_result),
+            risk_agent_output=json.dumps(risk_result),
+            strategy_agent_output=json.dumps({"next_actions": strategy_result, "missed_deductions": missed_deductions}),
+        )
+        db.add(saved_filing)
+        db.commit()
+
         # Return response in format that matches Results.js expectations
         return {
             "tax_analysis": {
@@ -192,6 +225,23 @@ def analyze_direct(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error during analysis: {str(e)}"
         )
+
+
+@router.get("/history")
+@limiter.limit("20/minute")
+def get_analysis_history(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    filings = db.query(TaxFiling).filter(TaxFiling.user_id == current_user.id).order_by(TaxFiling.created_at.desc()).all()
+    return [{
+        "filing_id": filing.id,
+        "created_at": filing.created_at,
+        "gross_income": filing.total_income,
+        "total_deductions": filing.total_deductions,
+        "recommended_regime": filing.recommended_regime,
+        "tax_old_regime": filing.tax_old_regime,
+        "tax_new_regime": filing.tax_new_regime,
+        "potential_savings": abs(filing.tax_old_regime - filing.tax_new_regime),
+        "audit_risk_score": (json.loads(filing.risk_agent_output).get("overall_audit_risk_score", 0) if filing.risk_agent_output else 0),
+    } for filing in filings]
 
 
 @router.post("/analyze/{filing_id}", response_model=TaxFilingAnalysis)

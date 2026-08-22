@@ -21,6 +21,12 @@ class User(Base):
     email_verified = Column(Boolean, default=False, nullable=False)
     otp_code = Column(String, nullable=True)
     otp_expires_at = Column(DateTime, nullable=True)
+    employment_type = Column(String, nullable=True)
+    pan_aadhaar_linked = Column(Boolean, default=False, nullable=False)
+    financial_year = Column(String, default="FY 2024-25 (AY 2025-26)", nullable=False)
+    employer_name = Column(String, nullable=True)
+    email_reminders_enabled = Column(Boolean, default=True, nullable=False)
+    profile_photo_url = Column(String, nullable=True)
     verification_token = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -66,6 +72,18 @@ class TaxFiling(Base):
     
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class Expense(Base):
+    __tablename__ = "expenses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, index=True, nullable=False)
+    amount = Column(Float, nullable=False)
+    category = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    date = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
 class AuditFlag(Base):

@@ -16,7 +16,15 @@ class EmailDeliveryError(Exception):
 def send_otp_email(recipient: str, otp: str) -> None:
     """Send an OTP without exposing it through the application API."""
     api_key = os.getenv("BREVO_API_KEY")
+    env = os.getenv("ENVIRONMENT", "production").lower()
     if not api_key:
+        if env in {"test", "development"}:
+            logger.warning(
+                "BREVO_API_KEY is not configured; simulating successful OTP delivery in %s mode for %s",
+                env,
+                recipient,
+            )
+            return
         raise EmailDeliveryError("BREVO_API_KEY is not configured")
 
     try:

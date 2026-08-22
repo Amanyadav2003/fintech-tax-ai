@@ -13,7 +13,7 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 }
 };
 
-function DeductionForm({ incomeData, onAnalysisComplete }) {
+function DeductionForm({ incomeData, onAnalysisComplete, userEmail }) {
   const [deductions, setDeductions] = useState({
     investments_80c: '',
     health_insurance_80d: '',
@@ -54,6 +54,7 @@ function DeductionForm({ incomeData, onAnalysisComplete }) {
       };
 
       const response = await api.post('/tax/analyze', payload);
+      localStorage.removeItem(`taxmate_income_draft_${userEmail || 'guest'}`);
       onAnalysisComplete(response.data);
 
     } catch (err) {

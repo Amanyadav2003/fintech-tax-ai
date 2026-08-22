@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import './results.css';
+import { CheckCircle2 } from 'lucide-react';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -40,6 +41,11 @@ function Results({ analysis }) {
         <h3>Recommended Regime: <span style={{fontWeight: 800}}>{tax_analysis.recommended_regime.toUpperCase()}</span></h3>
         <div className="amount">₹ {Math.abs(tax_analysis.potential_savings).toLocaleString('en-IN')}</div>
         <h3>Potential Annual Savings</h3>
+      </motion.div>
+
+      <motion.div className="agent-visibility" variants={itemVariants}>
+        <div className="agent-visibility-heading"><div><p className="eyebrow">Analysis pipeline</p><h2>Three-agent review complete</h2></div><span>Dependency-ordered execution</span></div>
+        <div className="agent-cards"><div><CheckCircle2 size={18} /><strong>Tax Agent</strong><span>Regime Analysis</span><em>Complete</em></div><div><CheckCircle2 size={18} /><strong>Risk Agent</strong><span>Audit Risk Scoring</span><em>Complete</em></div><div><CheckCircle2 size={18} /><strong>Strategy Agent</strong><span>Deduction Discovery</span><em>Complete</em></div></div>
       </motion.div>
 
       <motion.div className="result-card" variants={itemVariants}>

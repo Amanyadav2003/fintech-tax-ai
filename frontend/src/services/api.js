@@ -33,7 +33,7 @@ api.interceptors.response.use(
   },
   async (error) => {
     const originalRequest = error.config;
-    const isAuthRoute = originalRequest.url.includes('auth/login') || originalRequest.url.includes('auth/refresh') || originalRequest.url.includes('auth/register') || originalRequest.url.includes('auth/verify-otp') || originalRequest.url.includes('auth/resend-otp');
+    const isAuthRoute = originalRequest.url.includes('auth/login') || originalRequest.url.includes('auth/refresh') || originalRequest.url.includes('auth/register') || originalRequest.url.includes('auth/verify-otp') || originalRequest.url.includes('auth/resend-otp') || originalRequest.url.includes('auth/send-registration-otp') || originalRequest.url.includes('auth/verify-registration-otp');
 
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthRoute) {
       originalRequest._retry = true;

@@ -1,3 +1,5 @@
+.agent-visibility{margin:0 0 20px;padding:20px;background:#fff;border:1px solid var(--gray-lighter);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm)}
+.agent-visibility-heading{display:flex;align-items:center;justify-content:space-between;gap:15px}.agent-visibility-heading h2{color:var(--primary-dark);font-size:1.15rem}.agent-visibility-heading>span{color:var(--gray);font-size:.75rem}.agent-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}.agent-cards>div{display:grid;grid-template-columns:auto 1fr;column-gap:8px;padding:14px;border:1px solid var(--gray-lighter);border-radius:9px;background:#f8fafc}.agent-cards svg{grid-row:span 3;color:#059669}.agent-cards strong{color:var(--primary-dark);font-size:.88rem}.agent-cards span{color:var(--gray);font-size:.75rem}.agent-cards em{color:#047857;font-size:.72rem;font-style:normal;font-weight:800;margin-top:5px}@media(max-width:650px){.agent-visibility-heading{align-items:start;flex-direction:column}.agent-cards{grid-template-columns:1fr}}
 .results-container {
   max-width: 1200px;
   margin: 0 auto;

@@ -2,8 +2,8 @@
 Updated schemas with enhanced validation and security
 """
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
-from typing import Optional, Dict, List
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
+from typing import Optional, Dict, List, Any
 from datetime import datetime
 
 
@@ -14,7 +14,12 @@ class UserRegister(BaseModel):
     phone: str = Field(..., pattern=r"^\d{10}$", description="10-digit phone number")
     pan: str = Field(..., pattern=r"^[A-Z]{5}[0-9]{4}[A-Z]{1}$", description="Valid PAN format")
     age: int = Field(..., ge=18, le=100)
-    state: str
+    state: str = "Maharashtra"
+    employment_type: str = Field(default="Salaried", pattern=r"^(Salaried|Self-employed|Business)$")
+    pan_aadhaar_linked: bool = False
+    financial_year: str = "FY 2024-25 (AY 2025-26)"
+    employer_name: Optional[str] = Field(default=None, max_length=150)
+    email_reminders_enabled: bool = True
 
     @field_validator('password')
     @classmethod
@@ -28,9 +33,28 @@ class UserRegister(BaseModel):
         return v
 
 
-class UserLogin(BaseModel):
+class LoginOTPVerification(BaseModel):
     email: EmailStr
+    otp: str = Field(..., pattern=r"^\d{6}$")
+
+
+class UserLogin(BaseModel):
+    email: Optional[EmailStr] = None
+    username: Optional[str] = None
     password: str
+
+    @model_validator(mode='before')
+    @classmethod
+    def normalize_login_identity(cls, data: Any) -> Any:
+        if isinstance(data, dict) and 'email' not in data and 'username' in data:
+            username = data['username']
+            if isinstance(username, str) and '@' in username:
+                data['email'] = username
+        return data
+
+    @property
+    def login_email(self) -> Optional[str]:
+        return self.email or self.username
 
 
 class OTPVerification(BaseModel):
@@ -56,6 +80,12 @@ class UserResponse(BaseModel):
     age: int
     state: str
     created_at: datetime
+    employment_type: Optional[str] = None
+    pan_aadhaar_linked: bool = False
+    financial_year: str = "FY 2024-25 (AY 2025-26)"
+    employer_name: Optional[str] = None
+    email_reminders_enabled: bool = True
+    profile_photo_url: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -74,6 +104,15 @@ class IncomeData(BaseModel):
     dividend: float = Field(ge=0, description="Must be non-negative")
     rental_income: float = Field(ge=0, description="Must be non-negative")
     professional_fees: float = Field(ge=0, description="Must be non-negative")
+    tds_deducted: float = Field(default=0, ge=0)
+    hra_received: float = Field(default=0, ge=0)
+    other_sources: float = Field(default=0, ge=0)
+    short_term_capital_gains: float = Field(default=0, ge=0)
+    long_term_capital_gains: float = Field(default=0, ge=0)
+
+
+class NotificationPreferences(BaseModel):
+    email_reminders_enabled: bool
 
 
 class DeductionsData(BaseModel):

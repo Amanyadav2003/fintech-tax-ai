@@ -58,6 +58,11 @@ class IncomeData(BaseModel):
     dividend: float = Field(default=0, ge=0)
     rental_income: float = Field(default=0, ge=0)
     professional_fees: float = Field(default=0, ge=0)
+    tds_deducted: float = Field(default=0, ge=0)
+    hra_received: float = Field(default=0, ge=0)
+    other_sources: float = Field(default=0, ge=0)
+    short_term_capital_gains: float = Field(default=0, ge=0)
+    long_term_capital_gains: float = Field(default=0, ge=0)
     
     @field_validator('salary')
     @classmethod

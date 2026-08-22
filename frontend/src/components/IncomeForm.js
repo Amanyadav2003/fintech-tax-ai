@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { ChevronDown, Info } from 'lucide-react';
 import './incomeForm.css';
 
 const formVariants = {
@@ -12,14 +13,25 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 }
 };
 
-function IncomeForm({ onIncomeSubmit }) {
-  const [income, setIncome] = useState({
-    salary: '',
-    interest: '',
-    dividend: '',
-    rental_income: '',
-    professional_fees: '',
-  });
+const initialIncome = {
+  salary: '', interest: '', dividend: '', rental_income: '', professional_fees: '',
+  tds_deducted: '', hra_received: '', other_sources: '', short_term_capital_gains: '', long_term_capital_gains: '',
+};
+
+const descriptions = {
+  salary: 'Annual salary from Form 16 or payslips.', interest: 'Savings account and fixed deposit interest.', dividend: 'Dividends received from shares or funds.', rental_income: 'Net annual rent from property.', professional_fees: 'Business or freelance income.', tds_deducted: 'Tax already withheld by your employer or payer.', hra_received: 'House Rent Allowance received from your employer.', other_sources: 'Gifts, lottery winnings, or other miscellaneous income.', short_term_capital_gains: 'Gains from assets held for a short period.', long_term_capital_gains: 'Gains from assets held for a longer period.',
+};
+
+function IncomeField({ name, label, value, onChange }) {
+  return <motion.div className="form-group" variants={itemVariants}><label htmlFor={name}>{label} <span className="field-help" title={descriptions[name]} aria-label={descriptions[name]}><Info size={14} /></span></label><input id={name} type="number" name={name} value={value} onChange={onChange} placeholder="e.g., 0" min="0" /></motion.div>;
+}
+
+function IncomeForm({ onIncomeSubmit, userEmail }) {
+  const [income, setIncome] = useState(initialIncome);
+  const [showCapitalGains, setShowCapitalGains] = useState(false);
+  const storageKey = `taxmate_income_draft_${userEmail || 'guest'}`;
+
+  useEffect(() => { const saved = localStorage.getItem(storageKey); if (saved) { try { setIncome({ ...initialIncome, ...JSON.parse(saved) }); setShowCapitalGains(Boolean(JSON.parse(saved).short_term_capital_gains || JSON.parse(saved).long_term_capital_gains)); } catch { localStorage.removeItem(storageKey); } } }, [storageKey]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -27,6 +39,7 @@ function IncomeForm({ onIncomeSubmit }) {
       ...prev,
       [name]: value
     }));
+    localStorage.setItem(storageKey, JSON.stringify({ ...income, [name]: value }));
   };
 
   const handleSubmit = (e) => {
@@ -46,32 +59,20 @@ function IncomeForm({ onIncomeSubmit }) {
     >
       <h2>Your Income Sources</h2>
       <p className="subtitle">Enter your annual income from various sources for FY 2024-25.</p>
+      <div className="running-total"><span>Total Gross Income</span><strong>₹ {Object.entries(income).filter(([key]) => !['tds_deducted', 'hra_received'].includes(key)).reduce((total, [, value]) => total + (parseFloat(value) || 0), 0).toLocaleString('en-IN')}</strong></div>
 
       <motion.form onSubmit={handleSubmit} variants={formVariants} initial="hidden" animate="visible">
-        <motion.div className="form-group" variants={itemVariants}>
-          <label>Salary Income</label>
-          <input type="number" name="salary" value={income.salary} onChange={handleChange} placeholder="e.g., 800000" min="0" />
-        </motion.div>
+        <IncomeField name="salary" label="Salary Income" value={income.salary} onChange={handleChange} />
+        <IncomeField name="interest" label="Interest Income (Savings, FDs)" value={income.interest} onChange={handleChange} />
+        <IncomeField name="dividend" label="Dividend Income" value={income.dividend} onChange={handleChange} />
+        <IncomeField name="rental_income" label="Rental Income" value={income.rental_income} onChange={handleChange} />
+        <IncomeField name="professional_fees" label="Business & Professional Income" value={income.professional_fees} onChange={handleChange} />
+        <IncomeField name="tds_deducted" label="TDS Already Deducted (from Form 16 / other sources)" value={income.tds_deducted} onChange={handleChange} />
+        <IncomeField name="hra_received" label="HRA Received (if applicable)" value={income.hra_received} onChange={handleChange} />
+        <IncomeField name="other_sources" label="Income from Other Sources (gifts, lottery, misc.)" value={income.other_sources} onChange={handleChange} />
 
-        <motion.div className="form-group" variants={itemVariants}>
-          <label>Interest Income (Savings, FDs)</label>
-          <input type="number" name="interest" value={income.interest} onChange={handleChange} placeholder="e.g., 5000" min="0" />
-        </motion.div>
-
-        <motion.div className="form-group" variants={itemVariants}>
-          <label>Dividend Income</label>
-          <input type="number" name="dividend" value={income.dividend} onChange={handleChange} placeholder="e.g., 10000" min="0" />
-        </motion.div>
-
-        <motion.div className="form-group" variants={itemVariants}>
-          <label>Rental Income</label>
-          <input type="number" name="rental_income" value={income.rental_income} onChange={handleChange} placeholder="e.g., 0" min="0" />
-        </motion.div>
-
-        <motion.div className="form-group" variants={itemVariants}>
-          <label>Business & Professional Income</label>
-          <input type="number" name="professional_fees" value={income.professional_fees} onChange={handleChange} placeholder="e.g., 0" min="0" />
-        </motion.div>
+        <motion.div variants={itemVariants} className="capital-toggle"><button type="button" onClick={() => setShowCapitalGains(value => !value)}><ChevronDown size={18} className={showCapitalGains ? 'rotated' : ''} /> {showCapitalGains ? 'Hide Capital Gains' : '+ Add Capital Gains'}</button></motion.div>
+        {showCapitalGains && <div className="capital-section"><IncomeField name="short_term_capital_gains" label="Short-Term Capital Gains" value={income.short_term_capital_gains} onChange={handleChange} /><IncomeField name="long_term_capital_gains" label="Long-Term Capital Gains" value={income.long_term_capital_gains} onChange={handleChange} /></div>}
 
         <motion.div variants={itemVariants}>
           <button type="submit" className="submit-btn">

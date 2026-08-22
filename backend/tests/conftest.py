@@ -4,9 +4,14 @@ Pytest configuration and fixtures for the test suite
 
 import pytest
 import os
+from uuid import uuid4
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 from fastapi.testclient import TestClient
+
+
+TEST_SQLITE_URL = "sqlite://"
 
 # Set test environment
 os.environ['ENVIRONMENT'] = 'test'
@@ -17,42 +22,61 @@ os.environ['ENCRYPTION_KEY'] = 'KHIO0Y6qNXe576O8de8wh0wNQo5N_zMqG_0ZODfwriU='
 
 @pytest.fixture(scope="session")
 def test_db():
-    """Create a test database"""
-    # Use SQLite in-memory database for tests
-    engine = create_engine("sqlite:///:memory:")
-    
-    # Import models AFTER setting environment
+    """Create a single shared SQLite in-memory database for the whole test session."""
+    engine = create_engine(
+        TEST_SQLITE_URL,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+
+    # Bind the app's database module to the same engine so startup/init_db and tests use the same connection pool.
+    import app.utils.database as database_module
+    database_module.engine = engine
+    database_module.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
     from app.models import Base
     Base.metadata.create_all(bind=engine)
-    
     return engine
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def db_session(test_db):
-    """Create a database session for tests"""
+    """Create a fresh database session for each test against the shared SQLite connection."""
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_db)
     db = TestingSessionLocal()
     yield db
+    db.rollback()
     db.close()
 
 
 @pytest.fixture
 def client(db_session):
-    """Create a test client"""
+    """Create a test client with a per-request database session override and a shared SQLite engine."""
     from app.main import app
     from app.utils.database import get_db
-    
+    from app.routes import auth_routes
+
+    auth_routes.pending_registrations.clear()
+    auth_routes.resend_attempts.clear()
+
+    if hasattr(app.state, "limiter"):
+        try:
+            app.state.limiter.reset()
+        except Exception:
+            pass
+
     def override_get_db():
         try:
             yield db_session
         finally:
             pass
-    
+
     app.dependency_overrides[get_db] = override_get_db
-    
+
     with TestClient(app) as test_client:
         yield test_client
+
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture

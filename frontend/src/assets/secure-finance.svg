@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 700" role="img" aria-labelledby="title desc">
+  <title id="title">Secure finance illustration</title>
+  <desc id="desc">A person reviewing a protected financial dashboard.</desc>
+  <rect width="800" height="700" rx="40" fill="#eef4fa"/>
+  <circle cx="620" cy="150" r="86" fill="#d9e6f3"/>
+  <path d="M100 590c20-125 115-190 230-190s210 65 230 190" fill="#1e3a5f"/>
+  <path d="M215 410c20-95 83-145 140-145s120 50 140 145l-42 105H258z" fill="#2d5f8b"/>
+  <circle cx="355" cy="210" r="82" fill="#f5c7a9"/>
+  <path d="M274 195c8-81 53-122 108-122 65 0 100 49 91 121-34-18-63-48-76-82-25 48-65 74-123 83z" fill="#102a43"/>
+  <path d="M335 290h43l24 87h-92z" fill="#f5c7a9"/>
+  <rect x="420" y="300" width="255" height="170" rx="18" fill="#fff" stroke="#1e3a5f" stroke-width="10"/>
+  <path d="M448 420l43-46 36 21 59-69 57 38" fill="none" stroke="#10b981" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="491" cy="374" r="8" fill="#10b981"/><circle cx="527" cy="395" r="8" fill="#10b981"/><circle cx="586" cy="326" r="8" fill="#10b981"/><circle cx="643" cy="364" r="8" fill="#10b981"/>
+  <rect x="470" y="494" width="150" height="76" rx="14" fill="#10b981"/>
+  <path d="M520 528h50M545 510v36" stroke="#fff" stroke-width="9" stroke-linecap="round"/>
+  <path d="M160 160h74M197 123v74" stroke="#10b981" stroke-width="12" stroke-linecap="round"/>
+</svg>

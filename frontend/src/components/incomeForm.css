@@ -37,6 +37,13 @@
   text-align: center;
 }
 
+.running-total { position: sticky; top: 92px; z-index: 2; display: flex; justify-content: space-between; align-items: center; gap: 16px; margin: 0 0 22px; padding: 13px 16px; border: 1px solid #bfdbfe; border-radius: var(--radius-md); background: #eff6ff; color: var(--primary-dark); }
+.running-total span { font-size: .82rem; font-weight: 700; }.running-total strong { font-size: 1.15rem; }
+.field-help { display: inline-flex; vertical-align: middle; color: var(--primary); cursor: help; }
+.capital-toggle { margin: 8px 0 8px; border-top: 1px solid var(--gray-lighter); padding-top: 16px; }
+.capital-toggle button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; color: var(--primary); font: inherit; font-weight: 800; cursor: pointer; padding: 4px 0; }
+.capital-toggle .rotated { transform: rotate(180deg); }.capital-section { padding: 14px; border-radius: var(--radius-md); background: #f8fafc; }
+
 .form-group {
   margin-bottom: 14px;
 }

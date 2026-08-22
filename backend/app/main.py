@@ -13,6 +13,7 @@ from sentry_sdk.integrations.fastapi import FastApiIntegration
 from .routes.tax_routes import router as tax_router
 from .routes.auth_routes import router as auth_router
 from .routes.chat_history_routes import router as chat_history_router
+from .routes.expense_routes import router as expense_router
 from .utils.database import init_db
 from .utils.middleware import ErrorHandlingMiddleware, SecurityHeadersMiddleware, LoggingMiddleware, limiter
 from .utils.logging_config import setup_logging
@@ -60,7 +61,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],  # FIXED: Specific headers only
     max_age=600,  # Preflight cache 10 minutes
 )
@@ -68,7 +69,7 @@ app.add_middleware(
 # Trusted hosts middleware - Prevent host header injection attacks
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+    allowed_hosts=os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver").split(",")
 )
 
 # Custom middlewares (order matters)
@@ -102,6 +103,7 @@ async def shutdown():
 app.include_router(auth_router)
 app.include_router(tax_router)
 app.include_router(chat_history_router)
+app.include_router(expense_router)
 
 # Custom exception handler for validation errors
 @app.exception_handler(RequestValidationError)

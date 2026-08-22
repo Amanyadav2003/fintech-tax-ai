@@ -75,3 +75,4 @@ logs/
 __pycache__/
 *.pyc
 auth_token.txt
+backend/uploads/*
