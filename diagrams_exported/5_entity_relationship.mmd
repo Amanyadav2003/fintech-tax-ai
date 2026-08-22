@@ -1,0 +1,78 @@
+erDiagram
+    USER ||--o{ CHAT_MESSAGE : sends
+    USER ||--o{ USER_SESSION : creates
+    USER ||--o{ USER_PREFERENCE : has
+    CHAT_MESSAGE ||--o{ CHAT_CONTEXT : contains
+    CHAT_MESSAGE }o--|| KNOWLEDGE_BASE : queries
+    KNOWLEDGE_BASE ||--o{ TOPIC : covers
+    USER_SESSION }o--|| USER : authenticates
+    USER_PREFERENCE }o--|| USER : customizes
+    
+    USER {
+        int user_id PK
+        string username
+        string email UK
+        string password_hash
+        string user_level
+        string phone
+        datetime created_at
+        datetime updated_at
+    }
+    
+    CHAT_MESSAGE {
+        int message_id PK
+        int user_id FK
+        string message_text
+        string response_text
+        string agent_type
+        string mode
+        string module_type
+        datetime timestamp
+        int context_id FK
+    }
+    
+    CHAT_CONTEXT {
+        int context_id PK
+        int user_id FK
+        string conversation_summary
+        string last_module
+        string user_intent
+        datetime last_updated
+    }
+    
+    USER_SESSION {
+        int session_id PK
+        int user_id FK
+        string token UK
+        string ip_address
+        datetime created_at
+        datetime expires_at
+        boolean is_active
+    }
+    
+    USER_PREFERENCE {
+        int preference_id PK
+        int user_id FK
+        string language
+        boolean notifications
+        string theme
+        string complexity_level
+        datetime created_at
+    }
+    
+    KNOWLEDGE_BASE {
+        int kb_id PK
+        string topic
+        string content
+        string example
+        string agent_type
+        string compliance_note
+        datetime updated_at
+    }
+    
+    TOPIC {
+        int topic_id PK
+        string topic_name
+        string category
+        string description
+    }

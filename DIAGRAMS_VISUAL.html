@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Diagrams - Virtual Tax Professional</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+        
+        .date {
+            color: #999;
+            font-size: 0.9em;
+        }
+        
+        .diagram-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+        }
+        
+        .diagram-card {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .diagram-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+        
+        .diagram-card h2 {
+            color: #667eea;
+            font-size: 1.8em;
+            margin-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .diagram-description {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 0.95em;
+            line-height: 1.8;
+        }
+        
+        .mermaid {
+            display: flex;
+            justify-content: center;
+            background: #f9f9f9;
+            border-radius: 8px;
+            padding: 20px;
+            overflow-x: auto;
+        }
+        
+        .diagram-number {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-right: 10px;
+            font-size: 0.9em;
+        }
+        
+        .export-btn {
+            display: inline-block;
+            background: #764ba2;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-size: 0.9em;
+            margin-top: 15px;
+            cursor: pointer;
+            border: none;
+            transition: background 0.3s;
+        }
+        
+        .export-btn:hover {
+            background: #667eea;
+        }
+        
+        footer {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 30px;
+            text-align: center;
+            color: #666;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .legend {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #555;
+        }
+        
+        @media print {
+            body {
+                background: white;
+            }
+            .diagram-card {
+                page-break-inside: avoid;
+                box-shadow: none;
+                border: 1px solid #ddd;
+            }
+        }
+        
+        .toc {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 5px solid #667eea;
+        }
+        
+        .toc h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .toc ul {
+            list-style: none;
+            padding-left: 20px;
+        }
+        
+        .toc li {
+            margin: 8px 0;
+        }
+        
+        .toc li:before {
+            content: "▸ ";
+            color: #764ba2;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏛️ Virtual Tax Professional System</h1>
+            <p class="subtitle">Complete System Design & Architecture Diagrams</p>
+            <p class="date">📅 May 12, 2026 | Version 1.0</p>
+        </header>
+        
+        <div class="toc">
+            <h3>📑 Diagram Index</h3>
+            <ul>
+                <li><strong>Diagram 1:</strong> System Design - High-Level Architecture</li>
+                <li><strong>Diagram 2:</strong> UML Class Diagram - Core Entities</li>
+                <li><strong>Diagram 3:</strong> User Flow & Chat Workflow</li>
+                <li><strong>Diagram 4:</strong> Data Flow Diagram</li>
+                <li><strong>Diagram 5:</strong> Entity Relationship Diagram</li>
+                <li><strong>Diagram 6:</strong> Sequence Diagram - Chat Processing</li>
+            </ul>
+        </div>
+        
+        <div class="diagram-grid">
+            <!-- Diagram 1: System Design -->
+            <div class="diagram-card">
+                <h2><span class="diagram-number">1</span>System Design - Architecture</h2>
+                <p class="diagram-description">
+                    <strong>Overview:</strong> High-level system architecture showing all layers from frontend to database. 
+                    Shows how users interact with the frontend, which connects through an API gateway to the agent layer, 
+                    backend services, and finally the database layer.
+                </p>
+                <div class="mermaid">
+                    graph TB
+                        subgraph Frontend["🖥️ Frontend Layer"]
+                            UI["React UI<br/>Chat Interface"]
+                            Auth["Authentication<br/>Service"]
+                            Cache["Local Cache<br/>Session Data"]
+                        end
+                        
+                        subgraph API["🔗 API Gateway Layer"]
+                            Gateway["REST API<br/>Port 5000"]
+                            Routes["Routes<br/>/api/tax/chat<br/>/api/auth<br/>/api/user"]
+                        end
+                        
+                        subgraph Agent["🤖 Agent Layer"]
+                            ChatAgent["Chat Agent<br/>Orchestrator"]
+                            GST["GST Agent<br/>Reg/Filing"]
+                            IncomeTax["Income Tax Agent<br/>15+ Topics"]
+                            Accounting["Accounting Agent<br/>Journal/Reconciliation"]
+                        end
+                        
+                        subgraph Backend["💾 Backend Services"]
+                            UserService["User Service<br/>Registration/Login"]
+                            ChatService["Chat Service<br/>History & Context"]
+                            KnowledgeBase["Knowledge Base<br/>23+ Topics"]
+                        end
+                        
+                        subgraph Database["🗄️ Database Layer"]
+                            PostgreSQL["PostgreSQL<br/>Users<br/>Chat History<br/>User Preferences"]
+                        end
+                        
+                        subgraph External["🌐 External Services"]
+                            TaxRules["Tax Rules<br/>API"]
+                            Compliance["Compliance<br/>Updates"]
+                        end
+                        
+                        UI -->|HTTP Request| Gateway
+                        Auth -->|Token Verify| Gateway
+                        Gateway -->|Route| Routes
+                        Routes -->|Chat Query| ChatAgent
+                        ChatAgent -->|Dispatch| GST
+                        ChatAgent -->|Dispatch| IncomeTax
+                        ChatAgent -->|Dispatch| Accounting
+                        GST -->|Query| KnowledgeBase
+                        IncomeTax -->|Query| KnowledgeBase
+                        Accounting -->|Query| KnowledgeBase
+                        UserService -->|User Data| PostgreSQL
+                        ChatService -->|Store History| PostgreSQL
+                        ChatAgent -->|Save Context| ChatService
+                        KnowledgeBase -->|Fetch| TaxRules
+                        KnowledgeBase -->|Check| Compliance
+                </div>
+                <div class="legend">
+                    <strong>🎯 Use When:</strong> Understanding overall system flow, technology stack, and integration points
+                </div>
+            </div>
+            
+            <!-- Diagram 2: UML Class Diagram -->
+            <div class="diagram-card">
+                <h2><span class="diagram-number">2</span>UML Class Diagram - Entities</h2>
+                <p class="diagram-description">
+                    <strong>Overview:</strong> Shows core entity classes, their attributes, methods, and relationships. 
+                    Includes User, ChatMessage, ChatAgent, specialized agents (GST, IncomeTax, Accounting), 
+                    KnowledgeBase, and UserSession.
+                </p>
+                <div class="mermaid">
+                    classDiagram
+                        class User {
+                            +int user_id
+                            +string username
+                            +string email
+                            +string password_hash
+                            +string user_level
+                            +datetime created_at
+                            +datetime updated_at
+                            +register()
+                            +login()
+                            +update_profile()
+                        }
+                        
+                        class ChatMessage {
+                            +int message_id
+                            +int user_id
+                            +string message_text
+                            +string response_text
+                            +string agent_type
+                            +string mode
+                            +datetime timestamp
+                            +save_message()
+                            +get_history()
+                        }
+                        
+                        class ChatAgent {
+                            +string agent_mode
+                            +string current_module
+                            +detect_intent()
+                            +route_to_module()
+                            +generate_response()
+                            +maintain_context()
+                        }
+                        
+                        class GSTAgent {
+                            +string[] gst_topics
+                            +handle_registration()
+                            +handle_filing()
+                            +explain_gst_rules()
+                        }
+                        
+                        class IncomeTaxAgent {
+                            +string[] tax_topics
+                            +calculate_tax()
+                            +optimize_deductions()
+                            +handle_capital_gains()
+                            +prepare_itr()
+                        }
+                        
+                        class AccountingAgent {
+                            +handle_journal_entry()
+                            +reconcile_accounts()
+                            +generate_reports()
+                            +track_transactions()
+                        }
+                        
+                        class KnowledgeBase {
+                            +string topic
+                            +string content
+                            +string example
+                            +string compliance_note
+                            +retrieve_content()
+                            +search_topics()
+                            +update_compliance()
+                        }
+                        
+                        class UserSession {
+                            +int session_id
+                            +int user_id
+                            +string token
+                            +datetime expiry
+                            +create_session()
+                            +validate_token()
+                            +destroy_session()
+                        }
+                        
+                        User "1" --> "*" ChatMessage : writes
+                        User "1" --> "1" UserSession : has
+                        ChatAgent "1" --> "*" ChatMessage : creates
+                        ChatAgent --> GSTAgent : delegates
+                        ChatAgent --> IncomeTaxAgent : delegates
+                        ChatAgent --> AccountingAgent : delegates
+                        ChatMessage --> KnowledgeBase : queries
+                        GSTAgent --> KnowledgeBase : retrieves
+                        IncomeTaxAgent --> KnowledgeBase : retrieves
+                        AccountingAgent --> KnowledgeBase : retrieves
+                </div>
+                <div class="legend">
+                    <strong>🎯 Use When:</strong> Understanding data model, database schema, entity relationships
+                </div>
+            </div>
+            
+            <!-- Diagram 3: User Flow -->
+            <div class="diagram-card">
+                <h2><span class="diagram-number">3</span>User Flow & Chat Workflow</h2>
+                <p class="diagram-description">
+                    <strong>Overview:</strong> Complete user journey from login to chat response. Shows registration, 
+                    authentication, query input, agent routing, knowledge base lookup, response generation, 
+                    storage, and display.
+                </p>
+                <div class="mermaid">
+                    flowchart TD
+                        Start([User Visits App]) --> Auth{Logged In?}
+                        Auth -->|No| Register[Register/Login]
+                        Register --> RegDB[(Save to DB)]
+                        Auth -->|Yes| Chat[Chat Interface]
+                        Chat --> Input["Enter Question<br/>e.g., 'How to register for GST?'"]
+                        Input --> API["POST /api/tax/chat<br/>with message"]
+                        API --> ChatAgent["ChatAgent<br/>Orchestrator"]
+                        ChatAgent --> Detect["Detect Intent<br/>TRAINING/EXECUTION"]
+                        Detect --> Route["Route to Module<br/>GST/IncomeTax/Accounting"]
+                        Route --> Module{Which Module?}
+                        Module -->|GST| GSTLogic["GSTAgent:<br/>- Handle registration<br/>- Filing process<br/>- GST rules"]
+                        Module -->|IncomeTax| ITLogic["IncomeTaxAgent:<br/>- Tax calculation<br/>- Deduction optimizer<br/>- Capital gains"]
+                        Module -->|Accounting| AcctLogic["AccountingAgent:<br/>- Journal entries<br/>- Reconciliation<br/>- Reports"]
+                        GSTLogic --> KB["Query Knowledge Base<br/>23+ Topics"]
+                        ITLogic --> KB
+                        AcctLogic --> KB
+                        KB --> Generate["Generate Personalized<br/>Response"]
+                        Generate --> Save["Save Chat History<br/>to Database"]
+                        Save --> Response["Return Response<br/>to Frontend"]
+                        Response --> Display["Display to User"]
+                        Display --> Continue{Continue?}
+                        Continue -->|Yes| Input
+                        Continue -->|No| End([Session End])
+                        style Start fill:#90EE90
+                        style End fill:#FFB6C6
+                        style ChatAgent fill:#87CEEB
+                        style KB fill:#FFD700
+                </div>
+                <div class="legend">
+                    <strong>🎯 Use When:</strong> Tracing user queries, understanding workflow steps, debugging user experience
+                </div>
+            </div>
+            
+            <!-- Diagram 4: Data Flow -->
+            <div class="diagram-card">
+                <h2><span class="diagram-number">4</span>Data Flow Diagram</h2>
+                <p class="diagram-description">
+                    <strong>Overview:</strong> Shows how data transforms through the system from input to output. 
+                    Includes data sources, processing pipeline (parse, detect, route, process, format), 
+                    storage systems, and frontend display.
+                </p>
+                <div class="mermaid">
+                    graph LR
+                        subgraph Sources["Data Sources"]
+                            U["👤 User Input"]
+                            DB1["🗄️ User DB"]
+                            KB["📚 Knowledge Base"]
+                        end
+                        
+                        subgraph Process["Data Processing"]
+                            P1["Parse Input<br/>Tokenize"]
+                            P2["Intent Detection<br/>Classify Request"]
+                            P3["Module Routing<br/>GST/IT/Acct"]
+                            P4["Agent Processing<br/>Generate Response"]
+                            P5["Format Output"]
+                        end
+                        
+                        subgraph Storage["Data Storage"]
+                            DB2["PostgreSQL<br/>Users"]
+                            DB3["PostgreSQL<br/>Chat History"]
+                            Cache["Redis Cache<br/>Sessions"]
+                        end
+                        
+                        subgraph Output["Data Output"]
+                            O1["JSON Response"]
+                            O2["🖥️ Frontend Display"]
+                        end
+                        
+                        U -->|"Raw Text"| P1
+                        P1 -->|"Tokens"| P2
+                        P2 -->|"Intent Label"| P3
+                        P3 -->|"Module ID"| P4
+                        KB -->|"Context Data"| P4
+                        DB1 -->|"User Profile"| P4
+                        P4 -->|"Generated Text"| P5
+                        P5 -->|"Formatted"| O1
+                        O1 -->|"Send"| O2
+                        P4 -->|"Store"| DB3
+                        U -->|"User ID"| Cache
+                        Cache -->|"Session Token"| P1
+                        O1 -.->|"User Data"| DB2
+                        
+                        style U fill:#90EE90
+                        style P4 fill:#87CEEB
+                        style DB2 fill:#FFD700
+                        style DB3 fill:#FFD700
+                        style O2 fill:#DDA0DD
+                </div>
+                <div class="legend">
+                    <strong>🎯 Use When:</strong> Understanding data transformation, bottleneck analysis, performance tuning
+                </div>
+            </div>
+            
+            <!-- Diagram 5: ERD -->
+            <div class="diagram-card">
+                <h2><span class="diagram-number">5</span>Entity Relationship Diagram</h2>
+                <p class="diagram-description">
+                    <strong>Overview:</strong> Database schema showing 7 main tables with primary keys, foreign keys, 
+                    and relationships. Includes User, ChatMessage, ChatContext, UserSession, UserPreference, 
+                    KnowledgeBase, and Topic tables.
+                </p>
+                <div class="mermaid">
+                    erDiagram
+                        USER ||--o{ CHAT_MESSAGE : sends
+                        USER ||--o{ USER_SESSION : creates
+                        USER ||--o{ USER_PREFERENCE : has
+                        CHAT_MESSAGE ||--o{ CHAT_CONTEXT : contains
+                        CHAT_MESSAGE }o--|| KNOWLEDGE_BASE : queries
+                        KNOWLEDGE_BASE ||--o{ TOPIC : covers
+                        USER_SESSION }o--|| USER : authenticates
+                        USER_PREFERENCE }o--|| USER : customizes
+                        
+                        USER {
+                            int user_id PK
+                            string username
+                            string email UK
+                            string password_hash
+                            string user_level
+                            string phone
+                            datetime created_at
+                            datetime updated_at
+                        }
+                        
+                        CHAT_MESSAGE {
+                            int message_id PK
+                            int user_id FK
+                            string message_text
+                            string response_text
+                            string agent_type
+                            string mode
+                            string module_type
+                            datetime timestamp
+                            int context_id FK
+                        }
+                        
+                        CHAT_CONTEXT {
+                            int context_id PK
+                            int user_id FK
+                            string conversation_summary
+                            string last_module
+                            string user_intent
+                            datetime last_updated
+                        }
+                        
+                        USER_SESSION {
+                            int session_id PK
+                            int user_id FK
+                            string token UK
+                            string ip_address
+                            datetime created_at
+                            datetime expires_at
+                            boolean is_active
+                        }
+                        
+                        USER_PREFERENCE {
+                            int preference_id PK
+                            int user_id FK
+                            string language
+                            boolean notifications
+                            string theme
+                            string complexity_level
+                            datetime created_at
+                        }
+                        
+                        KNOWLEDGE_BASE {
+                            int kb_id PK
+                            string topic
+                            string content
+                            string example
+                            string agent_type
+                            string compliance_note
+                            datetime updated_at
+                        }
+                        
+                        TOPIC {
+                            int topic_id PK
+                            string topic_name
+                            string category
+                            string description
+                        }
+                </div>
+                <div class="legend">
+                    <strong>🎯 Use When:</strong> Database design, writing SQL queries, backup/restore planning
+                </div>
+            </div>
+            
+            <!-- Diagram 6: Sequence -->
+            <div class="diagram-card">
+                <h2><span class="diagram-number">6</span>Sequence Diagram - Chat Processing</h2>
+                <p class="diagram-description">
+                    <strong>Overview:</strong> Step-by-step message processing from user input to display. Shows 
+                    synchronous interactions between Frontend, API Gateway, ChatAgent, specialized agents, 
+                    Knowledge Base, and Database.
+                </p>
+                <div class="mermaid">
+                    sequenceDiagram
+                        participant User as 👤 User
+                        participant Frontend as 🖥️ Frontend
+                        participant API as 🔗 API Gateway
+                        participant ChatAgent as 🤖 Chat Agent
+                        participant Agent as 🔧 Specialized Agent
+                        participant KB as 📚 Knowledge Base
+                        participant DB as 🗄️ Database
+
+                        User->>Frontend: Enter Question
+                        Frontend->>API: POST /api/tax/chat
+                        API->>ChatAgent: Pass message
+                        ChatAgent->>ChatAgent: Detect Intent (TRAINING/EXECUTION)
+                        ChatAgent->>ChatAgent: Identify Module (GST/IT/Acct)
+                        ChatAgent->>Agent: Route to Agent
+                        Agent->>KB: Query Topic
+                        KB-->>Agent: Return Content & Examples
+                        Agent->>Agent: Generate Response (personalized by level)
+                        Agent-->>ChatAgent: Response Text
+                        ChatAgent->>ChatAgent: Format Response
+                        ChatAgent->>DB: Store Chat Message
+                        DB-->>ChatAgent: Confirm Save
+                        ChatAgent-->>API: Return Response
+                        API-->>Frontend: JSON Response
+                        Frontend->>User: Display Answer
+                </div>
+                <div class="legend">
+                    <strong>🎯 Use When:</strong> Debugging message flow, performance analysis, understanding latency
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>
+                <strong>Virtual Tax Professional System</strong> - Complete System Design Documentation<br>
+                Version 1.0 | May 12, 2026 | All Rights Reserved
+            </p>
+            <p style="margin-top: 10px; font-size: 0.9em;">
+                💡 <strong>Tip:</strong> Right-click on any diagram and select "Save image as..." to export as PNG
+            </p>
+        </footer>
+    </div>
+    
+    <script>
+        mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+        mermaid.contentLoaded();
+    </script>
+</body>
+</html>

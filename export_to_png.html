@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Export Diagrams to PNG</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 { color: #667eea; }
+        .diagram-card {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .mermaid {
+            display: flex;
+            justify-content: center;
+            background: #fafafa;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #764ba2; }
+        .controls { margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <h1>📊 Export Diagrams as PNG</h1>
+    
+    <div class="controls">
+        <button onclick="exportAll()">📥 Export All Diagrams</button>
+        <button onclick="location.reload()">🔄 Refresh</button>
+    </div>
+    
+    <div id="diagrams"></div>
+
+    <script>
+        const diagrams = {
+            "1_system_design": "System Design - Architecture",
+            "2_uml_class_diagram": "UML Class Diagram",
+            "3_user_flow": "User Flow & Chat Workflow",
+            "4_data_flow": "Data Flow Diagram",
+            "5_entity_relationship": "Entity Relationship Diagram",
+            "6_sequence_diagram": "Sequence Diagram"
+        };
+
+        async function loadDiagrams() {
+            const container = document.getElementById('diagrams');
+            
+            for (const [key, title] of Object.entries(diagrams)) {
+                try {
+                    const response = await fetch(`diagrams_exported/${key}.mmd`);
+                    const mermaidCode = await response.text();
+                    
+                    const card = document.createElement('div');
+                    card.className = 'diagram-card';
+                    card.innerHTML = `
+                        <h2>${title}</h2>
+                        <div class="mermaid" id="${key}">
+${mermaidCode}
+                        </div>
+                        <button onclick="saveDiagram('${key}')">Save ${key}</button>
+                    `;
+                    container.appendChild(card);
+                } catch (e) {
+                    console.error(`Failed to load ${key}:`, e);
+                }
+            }
+            
+            mermaid.initialize({ startOnLoad: true, securityLevel: 'loose' });
+            mermaid.contentLoaded();
+        }
+
+        async function saveDiagram(diagramId) {
+            const element = document.getElementById(diagramId);
+            const svg = element.querySelector('svg');
+            
+            if (!svg) {
+                alert('Diagram not rendered yet. Please wait and try again.');
+                return;
+            }
+
+            try {
+                const canvas = await html2canvas(element, { 
+                    scale: 2,
+                    backgroundColor: '#ffffff'
+                });
+                const link = document.createElement('a');
+                link.href = canvas.toDataURL('image/png');
+                link.download = `${diagramId}.png`;
+                link.click();
+            } catch (e) {
+                console.error('Export failed:', e);
+                alert('Export failed. Try right-click > Save image as instead.');
+            }
+        }
+
+        async function exportAll() {
+            for (const key of Object.keys(diagrams)) {
+                await new Promise(resolve => setTimeout(resolve, 500));
+                saveDiagram(key);
+            }
+        }
+
+        // Load diagrams on page load
+        window.addEventListener('load', loadDiagrams);
+    </script>
+</body>
+</html>

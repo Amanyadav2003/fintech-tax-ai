@@ -1,0 +1,49 @@
+graph TB
+    subgraph Frontend["🖥️ Frontend Layer"]
+        UI["React UI<br/>Chat Interface"]
+        Auth["Authentication<br/>Service"]
+        Cache["Local Cache<br/>Session Data"]
+    end
+    
+    subgraph API["🔗 API Gateway Layer"]
+        Gateway["REST API<br/>Port 5000"]
+        Routes["Routes<br/>/api/tax/chat<br/>/api/auth<br/>/api/user"]
+    end
+    
+    subgraph Agent["🤖 Agent Layer"]
+        ChatAgent["Chat Agent<br/>Orchestrator"]
+        GST["GST Agent<br/>Reg/Filing"]
+        IncomeTax["Income Tax Agent<br/>15+ Topics"]
+        Accounting["Accounting Agent<br/>Journal/Reconciliation"]
+    end
+    
+    subgraph Backend["💾 Backend Services"]
+        UserService["User Service<br/>Registration/Login"]
+        ChatService["Chat Service<br/>History & Context"]
+        KnowledgeBase["Knowledge Base<br/>23+ Topics"]
+    end
+    
+    subgraph Database["🗄️ Database Layer"]
+        PostgreSQL["PostgreSQL<br/>Users<br/>Chat History<br/>User Preferences"]
+    end
+    
+    subgraph External["🌐 External Services"]
+        TaxRules["Tax Rules<br/>API"]
+        Compliance["Compliance<br/>Updates"]
+    end
+    
+    UI -->|HTTP Request| Gateway
+    Auth -->|Token Verify| Gateway
+    Gateway -->|Route| Routes
+    Routes -->|Chat Query| ChatAgent
+    ChatAgent -->|Dispatch| GST
+    ChatAgent -->|Dispatch| IncomeTax
+    ChatAgent -->|Dispatch| Accounting
+    GST -->|Query| KnowledgeBase
+    IncomeTax -->|Query| KnowledgeBase
+    Accounting -->|Query| KnowledgeBase
+    UserService -->|User Data| PostgreSQL
+    ChatService -->|Store History| PostgreSQL
+    ChatAgent -->|Save Context| ChatService
+    KnowledgeBase -->|Fetch| TaxRules
+    KnowledgeBase -->|Check| Compliance

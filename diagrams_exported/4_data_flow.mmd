@@ -1,0 +1,45 @@
+graph LR
+    subgraph Sources["Data Sources"]
+        U["👤 User Input"]
+        DB1["🗄️ User DB"]
+        KB["📚 Knowledge Base"]
+    end
+    
+    subgraph Process["Data Processing"]
+        P1["Parse Input<br/>Tokenize"]
+        P2["Intent Detection<br/>Classify Request"]
+        P3["Module Routing<br/>GST/IT/Acct"]
+        P4["Agent Processing<br/>Generate Response"]
+        P5["Format Output"]
+    end
+    
+    subgraph Storage["Data Storage"]
+        DB2["PostgreSQL<br/>Users"]
+        DB3["PostgreSQL<br/>Chat History"]
+        Cache["Redis Cache<br/>Sessions"]
+    end
+    
+    subgraph Output["Data Output"]
+        O1["JSON Response"]
+        O2["🖥️ Frontend Display"]
+    end
+    
+    U -->|"Raw Text"| P1
+    P1 -->|"Tokens"| P2
+    P2 -->|"Intent Label"| P3
+    P3 -->|"Module ID"| P4
+    KB -->|"Context Data"| P4
+    DB1 -->|"User Profile"| P4
+    P4 -->|"Generated Text"| P5
+    P5 -->|"Formatted"| O1
+    O1 -->|"Send"| O2
+    P4 -->|"Store"| DB3
+    U -->|"User ID"| Cache
+    Cache -->|"Session Token"| P1
+    O1 -.->|"User Data"| DB2
+    
+    style U fill:#90EE90
+    style P4 fill:#87CEEB
+    style DB2 fill:#FFD700
+    style DB3 fill:#FFD700
+    style O2 fill:#DDA0DD

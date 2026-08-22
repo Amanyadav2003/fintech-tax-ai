@@ -1,0 +1,25 @@
+sequenceDiagram
+    participant User as 👤 User
+    participant Frontend as 🖥️ Frontend
+    participant API as 🔗 API Gateway
+    participant ChatAgent as 🤖 Chat Agent
+    participant Agent as 🔧 Specialized Agent
+    participant KB as 📚 Knowledge Base
+    participant DB as 🗄️ Database
+
+    User->>Frontend: Enter Question
+    Frontend->>API: POST /api/tax/chat
+    API->>ChatAgent: Pass message
+    ChatAgent->>ChatAgent: Detect Intent (TRAINING/EXECUTION)
+    ChatAgent->>ChatAgent: Identify Module (GST/IT/Acct)
+    ChatAgent->>Agent: Route to Agent
+    Agent->>KB: Query Topic
+    KB-->>Agent: Return Content & Examples
+    Agent->>Agent: Generate Response (personalized by level)
+    Agent-->>ChatAgent: Response Text
+    ChatAgent->>ChatAgent: Format Response
+    ChatAgent->>DB: Store Chat Message
+    DB-->>ChatAgent: Confirm Save
+    ChatAgent-->>API: Return Response
+    API-->>Frontend: JSON Response
+    Frontend->>User: Display Answer

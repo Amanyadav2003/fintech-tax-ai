@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Export Diagrams as PNG</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #f5f5f5; }
+        h1 { color: #333; }
+        .control-panel { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        button { padding: 10px 20px; margin: 5px; background: #667eea; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #764ba2; }
+        .diagram-container { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .mermaid { display: flex; justify-content: center; }
+    </style>
+</head>
+<body>
+    <h1>📊 Mermaid Diagram Exporter</h1>
+    
+    <div class="control-panel">
+        <h3>📥 Export Instructions</h3>
+        <p>For each diagram below:</p>
+        <ol>
+            <li>Right-click on the diagram</li>
+            <li>Select "Save image as..."</li>
+            <li>Choose format (PNG recommended)</li>
+            <li>Save to your desired location</li>
+        </ol>
+        <button onclick="exportAll()">📥 Export All Diagrams</button>
+    </div>
+
+    <div id="diagrams"></div>
+
+    <script>
+        mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+        
+        const diagrams = {
+            "1_system_design": "System Design - Architecture",
+            "2_uml_class_diagram": "UML Class Diagram",
+            "3_user_flow": "User Flow & Chat Workflow",
+            "4_data_flow": "Data Flow Diagram",
+            "5_entity_relationship": "Entity Relationship Diagram",
+            "6_sequence_diagram": "Sequence Diagram"
+        };
+
+        // Fetch and display diagrams
+        fetch('diagrams_data.json')
+            .then(r => r.json())
+            .then(data => {
+                const container = document.getElementById('diagrams');
+                Object.keys(diagrams).forEach(key => {
+                    const div = document.createElement('div');
+                    div.className = 'diagram-container';
+                    div.innerHTML = `
+                        <h2>${diagrams[key]}</h2>
+                        <div class="mermaid" id="${key}">
+                            ${data[key]}
+                        </div>
+                        <button onclick="exportDiagram('${key}')">Save ${key}</button>
+                    `;
+                    container.appendChild(div);
+                });
+                mermaid.contentLoaded();
+            });
+
+        function exportDiagram(diagramId) {
+            const element = document.getElementById(diagramId);
+            const svg = element.querySelector('svg');
+            if (svg) {
+                const url = URL.createObjectURL(new Blob([svg.outerHTML], { type: 'image/svg+xml' }));
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${diagramId}.svg`;
+                a.click();
+            }
+        }
+
+        function exportAll() {
+            Object.keys(diagrams).forEach(key => {
+                setTimeout(() => exportDiagram(key), 500);
+            });
+        }
+    </script>
+</body>
+</html>

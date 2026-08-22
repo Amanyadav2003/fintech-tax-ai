@@ -1,0 +1,28 @@
+flowchart TD
+    Start([User Visits App]) --> Auth{Logged In?}
+    Auth -->|No| Register[Register/Login]
+    Register --> RegDB[(Save to DB)]
+    Auth -->|Yes| Chat[Chat Interface]
+    Chat --> Input["Enter Question<br/>e.g., 'How to register for GST?'"]
+    Input --> API["POST /api/tax/chat<br/>with message"]
+    API --> ChatAgent["ChatAgent<br/>Orchestrator"]
+    ChatAgent --> Detect["Detect Intent<br/>TRAINING/EXECUTION"]
+    Detect --> Route["Route to Module<br/>GST/IncomeTax/Accounting"]
+    Route --> Module{Which Module?}
+    Module -->|GST| GSTLogic["GSTAgent:<br/>- Handle registration<br/>- Filing process<br/>- GST rules"]
+    Module -->|IncomeTax| ITLogic["IncomeTaxAgent:<br/>- Tax calculation<br/>- Deduction optimizer<br/>- Capital gains"]
+    Module -->|Accounting| AcctLogic["AccountingAgent:<br/>- Journal entries<br/>- Reconciliation<br/>- Reports"]
+    GSTLogic --> KB["Query Knowledge Base<br/>23+ Topics"]
+    ITLogic --> KB
+    AcctLogic --> KB
+    KB --> Generate["Generate Personalized<br/>Response"]
+    Generate --> Save["Save Chat History<br/>to Database"]
+    Save --> Response["Return Response<br/>to Frontend"]
+    Response --> Display["Display to User"]
+    Display --> Continue{Continue?}
+    Continue -->|Yes| Input
+    Continue -->|No| End([Session End])
+    style Start fill:#90EE90
+    style End fill:#FFB6C6
+    style ChatAgent fill:#87CEEB
+    style KB fill:#FFD700

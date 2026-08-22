@@ -1,0 +1,87 @@
+classDiagram
+    class User {
+        +int user_id
+        +string username
+        +string email
+        +string password_hash
+        +string user_level
+        +datetime created_at
+        +datetime updated_at
+        +register()
+        +login()
+        +update_profile()
+    }
+    
+    class ChatMessage {
+        +int message_id
+        +int user_id
+        +string message_text
+        +string response_text
+        +string agent_type
+        +string mode
+        +datetime timestamp
+        +save_message()
+        +get_history()
+    }
+    
+    class ChatAgent {
+        +string agent_mode
+        +string current_module
+        +detect_intent()
+        +route_to_module()
+        +generate_response()
+        +maintain_context()
+    }
+    
+    class GSTAgent {
+        +string[] gst_topics
+        +handle_registration()
+        +handle_filing()
+        +explain_gst_rules()
+    }
+    
+    class IncomeTaxAgent {
+        +string[] tax_topics
+        +calculate_tax()
+        +optimize_deductions()
+        +handle_capital_gains()
+        +prepare_itr()
+    }
+    
+    class AccountingAgent {
+        +handle_journal_entry()
+        +reconcile_accounts()
+        +generate_reports()
+        +track_transactions()
+    }
+    
+    class KnowledgeBase {
+        +string topic
+        +string content
+        +string example
+        +string compliance_note
+        +retrieve_content()
+        +search_topics()
+        +update_compliance()
+    }
+    
+    class UserSession {
+        +int session_id
+        +int user_id
+        +string token
+        +datetime expiry
+        +create_session()
+        +validate_token()
+        +destroy_session()
+    }
+    
+    User "1" --> "*" ChatMessage : writes
+    User "1" --> "1" UserSession : has
+    ChatAgent "1" --> "*" ChatMessage : creates
+    ChatAgent --> GSTAgent : delegates
+    ChatAgent --> IncomeTaxAgent : delegates
+    ChatAgent --> AccountingAgent : delegates
+    ChatMessage --> KnowledgeBase : queries
+    GSTAgent --> KnowledgeBase : retrieves
+    IncomeTaxAgent --> KnowledgeBase : retrieves
+    AccountingAgent --> KnowledgeBase : retrieves
