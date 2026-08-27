@@ -2,6 +2,7 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional, Dict, List
 from datetime import datetime
 import re
+from ..utils.pii_validator import reject_pii_in_free_text
 
 
 class UserCreate(BaseModel):
@@ -25,9 +26,10 @@ class UserCreate(BaseModel):
     def validate_pan(cls, v):
         """Validate PAN format: AAAAA9999A (10 characters)"""
         pan_pattern = r'^[A-Z]{5}[0-9]{4}[A-Z]{1}$'
-        if not re.match(pan_pattern, v):
+        normalized_pan = v.upper()
+        if not re.match(pan_pattern, normalized_pan):
             raise ValueError('PAN must be in format AAAAA9999A')
-        return v.upper()
+        return normalized_pan
     
     @field_validator('name')
     @classmethod
@@ -53,8 +55,8 @@ class UserResponse(BaseModel):
 
 
 class IncomeData(BaseModel):
-    salary: float = Field(default=0, ge=0)
-    interest: float = Field(default=0, ge=0)
+    salary: float = Field(default=0, ge=0, le=100000000)
+    interest: float = Field(default=0, ge=0, le=5000000)
     dividend: float = Field(default=0, ge=0)
     rental_income: float = Field(default=0, ge=0)
     professional_fees: float = Field(default=0, ge=0)
@@ -73,17 +75,18 @@ class IncomeData(BaseModel):
 
 
 class DeductionsData(BaseModel):
-    investments: float = Field(default=0, ge=0)
-    health_insurance: float = Field(default=0, ge=0)
+    investments: float = Field(default=0, ge=0, le=150000)
+    health_insurance: float = Field(default=0, ge=0, le=500000)
     education_loan_interest: float = Field(default=0, ge=0)
-    home_loan_interest: float = Field(default=0, ge=0)
+    home_loan_interest: float = Field(default=0, ge=0, le=2000000)
     donations: float = Field(default=0, ge=0)
     medical_expenses: float = Field(default=0, ge=0)
     other: float = Field(default=0, ge=0)
 
 
 class TaxFilingCreate(BaseModel):
-    filing_year: int = Field(default=2024, ge=2000, le=2100)  # Reasonable year range
+    user_id: Optional[int] = Field(default=None, gt=0)
+    filing_year: int = Field(default=2025, ge=2000, le=2100)  # Reasonable year range
     income_data: IncomeData
     deductions_data: DeductionsData
     tds_paid: float = Field(default=0, ge=0, le=100000000)
@@ -150,6 +153,11 @@ class ChatQuery(BaseModel):
     """Chat message input"""
     message: str = Field(..., min_length=1, max_length=1000)
     context: Optional[Dict] = None
+
+    @field_validator('message')
+    @classmethod
+    def validate_message_pii(cls, value):
+        return reject_pii_in_free_text(value)
 
 
 class ChatResponse(BaseModel):

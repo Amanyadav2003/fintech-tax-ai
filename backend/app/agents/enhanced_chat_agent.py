@@ -42,6 +42,7 @@ class ConversationContext:
         self.current_task: Optional[str] = None
         self.timestamp = datetime.now()
         self.user_level = "beginner"  # beginner, intermediate, advanced
+        self.analysis_context: Dict = {}
     
     def update_context(self, mode: OperatingMode, module: TaxModule, sub_module: str = None):
         """Update conversation context"""
@@ -592,6 +593,19 @@ class EnhancedChatAgent:
         # Update context
         conversation.update_context(mode, module)
         conversation.add_to_history("user", query)
+
+        priority_response = self._generate_priority_response(query, conversation)
+        if priority_response:
+            response_text, response_type = priority_response
+            conversation.add_to_history("bot", response_text, {"type": response_type})
+            return {
+                "response": response_text,
+                "mode": mode.value,
+                "module": module.value,
+                "response_type": response_type,
+                "next_steps": self._get_next_steps(module, conversation),
+                "conversation": conversation
+            }
         
         # Find best matching topic
         knowledge_base = self._get_knowledge_base(module)
@@ -632,6 +646,51 @@ class EnhancedChatAgent:
             "conversation": conversation
         }
 
+    def _generate_priority_response(self, query: str, conversation: ConversationContext) -> Optional[Tuple[str, str]]:
+        """Handle high-confidence app and safety intents before broad keyword matching."""
+        query_lower = self._normalize_text(query)
+
+        if "80c" in query_lower and ("80d" in query_lower or "difference" in query_lower):
+            return ("**80C vs 80D**\n\n"
+                    "1. **Section 80C** covers eligible investments and payments such as PPF, ELSS, EPF, life-insurance premiums and home-loan principal, subject to the combined annual limit.\n"
+                    "2. **Section 80D** covers eligible health-insurance premiums and certain medical expenses, with limits depending on age and who is covered.\n"
+                    "3. They are separate sections, so eligible claims under both may be considered under the Old Regime. The New Regime has different deduction eligibility. Keep supporting proofs and verify the current ITR rules.", "lesson")
+
+        if (("old regime" in query_lower and "new regime" in query_lower) or ("old" in query_lower and "new" in query_lower and "regime" in query_lower) or "regime comparison" in query_lower):
+            return ("**Old vs New Regime for FY 2025-26 (AY 2026-27)**\n\n"
+                    "1. The **Old Regime** generally allows more exemptions and deductions, subject to eligibility and proof.\n"
+                    "2. The **New Regime** uses revised slabs and fewer deductions, with Section 87A relief where applicable.\n"
+                    "3. Compare both using your actual income, standard deduction, eligible claims and filing circumstances. The Results page in this app shows the comparison after an analysis; tax rules and eligibility should be verified before filing.", "lesson")
+
+        if "elss" in query_lower and "ppf" in query_lower:
+            return ("**ELSS vs PPF**\n\n"
+                    "1. **ELSS** is an equity mutual fund: it has market risk, a minimum three-year lock-in for each investment, and potentially higher but uncertain returns.\n"
+                    "2. **PPF** is a government-backed long-term savings product with a 15-year tenure and extension rules; its interest rate is notified periodically.\n"
+                    "3. Both may be eligible Section 80C items, subject to the combined limit and regime eligibility. Choose based on risk tolerance, time horizon and liquidity, not a guaranteed return; this is general information, not personalised investment advice.", "lesson")
+
+        if "80ccd" in query_lower or ("nps" in query_lower and "deduction" in query_lower):
+            return ("Section 80CCD(1B) is an additional deduction for eligible NPS contributions, separate from the combined Section 80C limit. Eligibility and regime availability matter, so verify the current FY 2025-26 rules and retain the NPS statement.", "lesson")
+
+        if any(term in query_lower for term in ["what stocks", "which stock", "buy stocks", "buy shares", "guaranteed return"]):
+            return ("I can explain general investing concepts, but I cannot recommend a specific stock, guarantee returns, or tell you to invest all your money in one product. Consider diversification, risk, time horizon, liquidity and fees, and consult a qualified financial adviser for personalised advice. For tax planning, compare eligible products and their tax treatment rather than choosing only for a deduction.", "general")
+
+        if any(term in query_lower for term in ["where", "how"]) and "form 16" in query_lower and any(term in query_lower for term in ["upload", "document", "submit"]):
+            return ("To upload Form 16:\n\n1. Open the authenticated workspace.\n2. Choose **My Documents** from the account navigation menu.\n3. Add the Form 16 document in the Document Vault.\n4. Use the extracted values in a new analysis when the document panel offers them.\n\nThe app does not expose a separate Form 16 upload button inside the income form.", "guide")
+
+        if any(term in query_lower for term in ["past tax analyses", "analysis history", "see my history", "previous analyses"]):
+            return ("To view past analyses:\n\n1. Open the authenticated workspace.\n2. Open the account navigation menu.\n3. Select **History**.\n4. Choose **View Details** for a saved analysis to open its existing Results page.", "guide")
+
+        if any(term in query_lower for term in ["fill the income form", "income form on this website", "file my tax analysis", "start a tax analysis"]):
+            return ("To complete an analysis:\n\n1. From Home, select **Start New Analysis**.\n2. Choose exactly one income type: Salaried, Business, or Self-Employed.\n3. Complete the relevant income fields, then select **Next: Add Deductions**.\n4. Enter eligible deductions and select **Analyze My Taxes**.\n5. Review the existing Results page and its Old/New Regime comparison.", "guide")
+
+        if "why" in query_lower and "new regime" in query_lower:
+            tax = conversation.analysis_context.get("tax_analysis", {})
+            if tax.get("recommended_regime"):
+                return (f"Your saved analysis recommended **{str(tax['recommended_regime']).upper()} Regime**. It used gross income of ₹{tax.get('gross_income', 0):,.0f}, total deductions of ₹{tax.get('total_deductions', 0):,.0f}, Old Regime tax of ₹{tax.get('old_regime_tax', 0):,.0f}, and New Regime tax of ₹{tax.get('new_regime_tax', 0):,.0f}. These are the figures from your current Results context; verify eligible claims and filing conditions before submitting a return.", "contextual")
+            return ("I do not have a completed analysis in the current Chat context, so I cannot explain a user-specific recommendation without inventing numbers. Complete or open an analysis first, then ask again.", "contextual")
+
+        return None
+
     def _generate_contextual_response(self, query: str, module: TaxModule) -> str:
         """Generate detailed response for general tax questions"""
         query_lower = query.lower()
@@ -642,7 +701,7 @@ class EnhancedChatAgent:
             if any(word in query_lower for word in ["old regime", "new regime", "regime comparison", "which regime"]):
                 return """📊 **Tax Regime Comparison: Old vs New**
 
-**OLD REGIME (Till 31-Mar-2024 or optionally beyond):**
+**OLD REGIME (FY 2025-26):**
 
 *How it works:*
 • Keep all exemptions and deductions
@@ -662,7 +721,7 @@ class EnhancedChatAgent:
 • Section 80E: Education Loan Interest (No limit)
 • Home Loan Interest: ₹2L for self-occupied property
 
-*Tax Rates (Old Regime FY 2024-25):*
+*Tax Rates (Old Regime FY 2025-26):*
 • Up to ₹2.5L: No tax
 • ₹2.5L - ₹5L: 5%
 • ₹5L - ₹10L: 20%
@@ -670,20 +729,21 @@ class EnhancedChatAgent:
 
 ---
 
-**NEW REGIME (From 01-Apr-2024):**
+**NEW REGIME (From 01-Apr-2025):**
 
 *How it works:*
 • NO deductions (except few like 80CCD, 80E, 80G)
 • Simpler slab structure
 • Pay tax on gross income
 
-*Tax Rates (New Regime FY 2024-25):*
-• Up to ₹3L: No tax
-• ₹3L - ₹6L: 5%
-• ₹6L - ₹9L: 10%
-• ₹9L - ₹12L: 15%
-• ₹12L - ₹15L: 20%
-• Above ₹15L: 30%
+*Tax Rates (New Regime FY 2025-26):*
+• Up to ₹4L: No tax
+• ₹4L - ₹8L: 5%
+• ₹8L - ₹12L: 10%
+• ₹12L - ₹16L: 15%
+• ₹16L - ₹20L: 20%
+• ₹20L - ₹24L: 25%
+• Above ₹24L: 30%
 
 *Limited Deductions Allowed:*
 • Section 80CCD(1B): ₹50K NPS contribution
@@ -933,7 +993,7 @@ To give you best recommendations, tell me:
             elif any(word in query_lower for word in ["deadline", "date", "when", "time", "by"]):
                 return """📅 **Important Tax Dates & Deadlines**
 
-**FY 2024-25 (Tax year ending 31-Mar-2025):**
+**FY 2025-26 (Tax year ending 31-Mar-2026):**
 
 **January-March:**
 • 31-Jan: Advance tax Q4 installment due

@@ -13,7 +13,7 @@ new_user = {
 
 data = json.dumps(new_user).encode()
 req = urllib.request.Request(
-    "http://127.0.0.1:5000/api/auth/register",
+    "http://localhost:5000/api/auth/register",
     data=data,
     headers={"Content-Type":"application/json"},
     method="POST",

@@ -121,6 +121,26 @@ def test_tax_filing_data():
 @pytest.fixture
 def authenticated_client(client, test_user_data):
     """Create an authenticated test client"""
+    from app.routes.auth_routes import pending_registrations
+    test_user_data = {
+        **test_user_data,
+        "email": f"{uuid4().hex[:8]}_{test_user_data['email']}",
+        "pan": f"ABCDE{uuid4().int % 10000:04d}F",
+    }
+
+    # Registration requires the same verified-email setup as the production flow.
+    send_response = client.post(
+        "/api/auth/send-registration-otp",
+        json={"email": test_user_data["email"]}
+    )
+    assert send_response.status_code == 200
+    otp = pending_registrations[test_user_data["email"]]["otp"]
+    verify_response = client.post(
+        "/api/auth/verify-registration-otp",
+        json={"email": test_user_data["email"], "otp": otp}
+    )
+    assert verify_response.status_code == 200
+
     # Register user
     register_response = client.post(
         "/api/auth/register",

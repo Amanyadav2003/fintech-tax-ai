@@ -174,7 +174,7 @@ def register(request: Request, user_data: UserRegister, db: Session = Depends(ge
             otp_expires_at=None,
             employment_type=user_data.employment_type or "Salaried",
             pan_aadhaar_linked=bool(user_data.pan_aadhaar_linked),
-            financial_year=user_data.financial_year or "FY 2024-25 (AY 2025-26)",
+            financial_year=user_data.financial_year or "FY 2025-26 (AY 2026-27)",
             employer_name=user_data.employer_name,
             email_reminders_enabled=bool(user_data.email_reminders_enabled)
         )
@@ -283,7 +283,8 @@ def verify_login_otp(payload: LoginOTPVerification, db: Session = Depends(get_db
 
 
 @router.post("/login")
-def login(credentials: UserLogin, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+def login(request: Request, credentials: UserLogin, db: Session = Depends(get_db)):
     """Login and set secure HttpOnly cookies."""
     login_email = (credentials.login_email or '').strip().lower()
     if not login_email:
@@ -315,8 +316,25 @@ def login(credentials: UserLogin, db: Session = Depends(get_db)):
             detail="Please verify your email before logging in"
         )
 
-    logger.info(f"User logged in successfully: {user.id}")
-    return _issue_tokens(user)
+    # Preserve the legacy username API contract; the current email login UI
+    # uses the OTP-gated path below.
+    if credentials.username is not None:
+        logger.info(f"User logged in successfully via legacy username: {user.id}")
+        return _issue_tokens(user)
+
+    user.otp_code = f"{secrets.randbelow(1000000):06d}"
+    user.otp_expires_at = datetime.utcnow() + timedelta(minutes=10)
+    db.commit()
+    try:
+        send_otp_email(user.email, user.otp_code)
+    except EmailDeliveryError as exc:
+        user.otp_code = None
+        user.otp_expires_at = None
+        db.commit()
+        logger.error("Login OTP email delivery failed for %s", user.email)
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Unable to send login verification email") from exc
+    logger.info(f"Login OTP sent: user={user.id}")
+    return {"otp_required": True, "message": "A verification code has been sent to your email."}
 
 
 @router.get("/me")

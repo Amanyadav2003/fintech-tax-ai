@@ -14,6 +14,7 @@ from .routes.tax_routes import router as tax_router
 from .routes.auth_routes import router as auth_router
 from .routes.chat_history_routes import router as chat_history_router
 from .routes.expense_routes import router as expense_router
+from .routes.document_routes import router as document_router
 from .utils.database import init_db
 from .utils.middleware import ErrorHandlingMiddleware, SecurityHeadersMiddleware, LoggingMiddleware, limiter
 from .utils.logging_config import setup_logging
@@ -50,8 +51,6 @@ app.state.limiter = limiter
 default_local_origins = [
     "http://localhost:3000",
     "http://localhost:3001",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:3001",
 ]
 allowed_origins = [origin.strip() for origin in os.getenv("CORS_ORIGINS", "").split(",") if origin.strip()]
 for origin in default_local_origins:
@@ -69,7 +68,7 @@ app.add_middleware(
 # Trusted hosts middleware - Prevent host header injection attacks
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver").split(",")
+    allowed_hosts=os.getenv("ALLOWED_HOSTS", "localhost,testserver").split(",")
 )
 
 # Custom middlewares (order matters)
@@ -104,16 +103,23 @@ app.include_router(auth_router)
 app.include_router(tax_router)
 app.include_router(chat_history_router)
 app.include_router(expense_router)
+app.include_router(document_router)
 
 # Custom exception handler for validation errors
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request, exc):
     logger.warning(f"Validation error: {exc}")
+    errors = []
+    for error in exc.errors():
+        normalized_error = dict(error)
+        if 'ctx' in normalized_error:
+            normalized_error['ctx'] = {key: str(value) for key, value in normalized_error['ctx'].items()}
+        errors.append(normalized_error)
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={
             "detail": "Validation error",
-            "errors": exc.errors(),
+            "errors": errors,
             "timestamp": datetime.utcnow().isoformat()
         }
     )

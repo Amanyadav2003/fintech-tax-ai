@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import './chat.css';
 import api from '../services/api';
 import ChatHistory from './ChatHistory';
+import { containsPanOrAadhaar, PII_FIELD_MESSAGE } from '../utils/piiValidator';
 
 const messageVariants = {
   hidden: { opacity: 0, y: 10 },
@@ -37,6 +38,10 @@ function Chat({ analysis, onClose }) {
     e.preventDefault();
     
     if (!inputValue.trim()) return;
+    if (containsPanOrAadhaar(inputValue)) {
+      setError(PII_FIELD_MESSAGE);
+      return;
+    }
 
     // Add user message
     const userMessage = {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import './deductionForm.css';
 import api from '../services/api';
@@ -13,7 +13,7 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 }
 };
 
-function DeductionForm({ incomeData, onAnalysisComplete, userEmail }) {
+function DeductionForm({ incomeData, onAnalysisComplete, userEmail, documentValues = {} }) {
   const [deductions, setDeductions] = useState({
     investments_80c: '',
     health_insurance_80d: '',
@@ -25,6 +25,7 @@ function DeductionForm({ incomeData, onAnalysisComplete, userEmail }) {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  useEffect(() => { if (Object.keys(documentValues).length) setDeductions(previous => ({ ...previous, ...documentValues })); }, [documentValues]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -38,7 +39,7 @@ function DeductionForm({ incomeData, onAnalysisComplete, userEmail }) {
     
     try {
       const payload = {
-        filing_year: 2024,
+        filing_year: 2025,
         tds_paid: 0,
         advance_tax_paid: 0,
         income_data: { ...incomeData },

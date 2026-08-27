@@ -167,3 +167,29 @@ class SecurityManager:
         except Exception as e:
             logger.error(f"Decryption failed: {e}")
             raise ValueError(f"Unable to decrypt sensitive data: {e}")
+
+
+# Keep the established module-level API available to the existing test suite
+# and older callers while retaining SecurityManager as the implementation.
+create_access_token = SecurityManager.create_access_token
+create_refresh_token = SecurityManager.create_refresh_token
+
+
+def verify_token(token: str) -> dict:
+    payload = SecurityManager.verify_token(token)
+    if payload is None:
+        raise JWTError("Invalid token")
+    return payload
+
+
+hash_password = SecurityManager.hash_password
+verify_password = SecurityManager.verify_password
+
+
+def encrypt_field(data: str) -> str:
+    if data is None:
+        raise ValueError("Data must not be None")
+    return SecurityManager.encrypt_field(data)
+
+
+decrypt_field = SecurityManager.decrypt_field

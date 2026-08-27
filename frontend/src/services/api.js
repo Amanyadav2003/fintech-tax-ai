@@ -51,6 +51,7 @@ api.interceptors.response.use(
       } catch (refreshError) {
         // Refresh failed, redirect to login if not already there
         sessionStorage.removeItem('access_token');
+        window.dispatchEvent(new Event('taxmate:session-expired'));
         if (window.location.pathname !== '/') {
             window.location.href = '/';
         }

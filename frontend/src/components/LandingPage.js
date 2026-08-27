@@ -42,7 +42,7 @@ function LandingPage({ onGetStarted }) {
 
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6, delay: 0.15 }} className="relative mx-auto w-full max-w-md pb-2">
             <div className="rounded-2xl border border-navy-100 bg-navy-900 p-5 shadow-2xl shadow-navy-900/20">
-              <div className="flex items-center justify-between border-b border-white/10 pb-5 text-white"><span className="text-sm font-semibold">Your tax overview</span><span className="rounded-full bg-white/10 px-3 py-1 text-xs text-slate-300">FY 2024</span></div>
+              <div className="flex items-center justify-between border-b border-white/10 pb-5 text-white"><span className="text-sm font-semibold">Your tax overview</span><span className="rounded-full bg-white/10 px-3 py-1 text-xs text-slate-300">FY 2025-26</span></div>
               <div className="py-8"><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Estimated savings</p><p className="mt-2 text-5xl font-bold text-white">₹42,850</p><div className="mt-5 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full w-3/4 rounded-full bg-mint-500" /></div><div className="mt-2 flex justify-between text-xs text-slate-400"><span>Analysis complete</span><span>75%</span></div></div>
               <div className="grid grid-cols-2 gap-3"><div className="rounded-lg bg-white/10 p-4"><p className="text-xs text-slate-400">Recommended</p><p className="mt-1 font-semibold text-mint-500">New regime</p></div><div className="rounded-lg bg-white/10 p-4"><p className="text-xs text-slate-400">Risk level</p><p className="mt-1 font-semibold text-white">Low</p></div></div>
             </div>

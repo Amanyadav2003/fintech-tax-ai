@@ -126,15 +126,15 @@ start "TAXMATE_FRONTEND" cmd /k "cd /d "%CD%\frontend" && npm start"
 timeout /t 5 >nul
 
 echo [INFO] Opening browser...
-start "" http://127.0.0.1:%FRONTEND_PORT%
+start "" http://localhost:%FRONTEND_PORT%
 
 echo.
 echo ==========================================
 echo   ALL SERVICES STARTED
 echo ==========================================
-echo Frontend: http://127.0.0.1:%FRONTEND_PORT%
-echo Backend:  http://127.0.0.1:%BACKEND_PORT%
-echo API Docs: http://127.0.0.1:%BACKEND_PORT%/docs
+echo Frontend: http://localhost:%FRONTEND_PORT%
+echo Backend:  http://localhost:%BACKEND_PORT%
+echo API Docs: http://localhost:%BACKEND_PORT%/docs
 echo.
 echo Close the service windows to stop them.
 echo.

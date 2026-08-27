@@ -38,6 +38,9 @@ python-multipart==0.0.6
 
 # Database
 pytz==2023.3.post1
+pypdf==5.9.0
+pillow==11.3.0
+pytesseract==0.3.13
 
 # Security scanning
 pip-audit==2.6.1

@@ -23,13 +23,25 @@ class User(Base):
     otp_expires_at = Column(DateTime, nullable=True)
     employment_type = Column(String, nullable=True)
     pan_aadhaar_linked = Column(Boolean, default=False, nullable=False)
-    financial_year = Column(String, default="FY 2024-25 (AY 2025-26)", nullable=False)
+    financial_year = Column(String, default="FY 2025-26 (AY 2026-27)", nullable=False)
     employer_name = Column(String, nullable=True)
     email_reminders_enabled = Column(Boolean, default=True, nullable=False)
     profile_photo_url = Column(String, nullable=True)
     verification_token = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class Document(Base):
+    __tablename__ = "documents"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, index=True, nullable=False)
+    document_type = Column(String, index=True, nullable=False)
+    file_path = Column(String, nullable=False)
+    original_filename = Column(String, nullable=False)
+    extracted_data = Column(JSON, nullable=False, default=dict)
+    uploaded_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
 class TaxFiling(Base):

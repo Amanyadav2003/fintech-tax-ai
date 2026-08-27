@@ -11,7 +11,7 @@ data = json.dumps({
 }).encode()
 
 req = urllib.request.Request(
-    "http://127.0.0.1:5001/api/auth/register",
+    "http://localhost:5001/api/auth/register",
     data=data,
     headers={"Content-Type": "application/json"},
     method="POST",

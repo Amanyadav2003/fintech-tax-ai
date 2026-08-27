@@ -4,25 +4,25 @@ Handles ITR calculations, deduction matching, tax liability computation
 """
 
 class TaxAgent:
+    calculation_version = "fy2025-26"
+    tax_year = "FY 2025-26 (AY 2026-27)"
+    cess_rate = 0.04
     def __init__(self):
         self.old_regime_slabs = [
             (250000, 0),           # Up to 2.5L: 0%
             (500000, 0.05),        # 2.5L-5L: 5%
-            (750000, 0.10),        # 5L-7.5L: 10%
-            (1000000, 0.15),       # 7.5L-10L: 15%
-            (1250000, 0.20),       # 10L-12.5L: 20%
-            (1500000, 0.25),       # 12.5L-15L: 25%
-            (float('inf'), 0.30),  # Above 15L: 30%
+            (1000000, 0.20),       # 5L-10L: 20%
+            (float('inf'), 0.30),  # Above 10L: 30%
         ]
         
         self.new_regime_slabs = [
-            (300000, 0),           # Up to 3L: 0%
-            (600000, 0.05),        # 3L-6L: 5%
-            (900000, 0.10),        # 6L-9L: 10%
-            (1200000, 0.15),       # 9L-12L: 15%
-            (1500000, 0.20),       # 12L-15L: 20%
-            (1800000, 0.25),       # 15L-18L: 25%
-            (float('inf'), 0.30),  # Above 18L: 30%
+            (400000, 0),           # Up to 4L: 0%
+            (800000, 0.05),        # 4L-8L: 5%
+            (1200000, 0.10),       # 8L-12L: 10%
+            (1600000, 0.15),       # 12L-16L: 15%
+            (2000000, 0.20),       # 16L-20L: 20%
+            (2400000, 0.25),       # 20L-24L: 25%
+            (float('inf'), 0.30),  # Above 24L: 30%
         ]
         
         self.standard_deduction_old = 50000  # Old regime
@@ -31,11 +31,12 @@ class TaxAgent:
     def calculate_tax_old_regime(self, income, deductions):
         """Calculate tax under old regime with deductions"""
         taxable_income = max(0, income - deductions - self.standard_deduction_old)
-        tax = self._calculate_from_slabs(taxable_income, self.old_regime_slabs)
+        tax, slab_breakdown = self._calculate_from_slabs(taxable_income, self.old_regime_slabs)
         
-        # Add health and education cess
-        cess = taxable_income * 0.04
-        total_tax = tax + cess
+        rebate, marginal_relief = self._calculate_rebate(taxable_income, tax, "old")
+        tax_after_rebate = max(0, tax - rebate - marginal_relief)
+        cess = tax_after_rebate * self.cess_rate
+        total_tax = tax_after_rebate + cess
         
         return {
             "gross_income": income,
@@ -43,33 +44,45 @@ class TaxAgent:
             "standard_deduction": self.standard_deduction_old,
             "taxable_income": taxable_income,
             "tax_before_cess": tax,
+            "rebate_87a": rebate,
+            "marginal_relief": marginal_relief,
+            "tax_after_rebate": tax_after_rebate,
             "health_education_cess": cess,
             "total_tax": total_tax,
+            "slab_breakdown": slab_breakdown,
+            "calculation_agent": "Tax Agent",
             "regime": "old"
         }
 
     def calculate_tax_new_regime(self, income):
         """Calculate tax under new regime (no deductions except standard)"""
         taxable_income = max(0, income - self.standard_deduction_new)
-        tax = self._calculate_from_slabs(taxable_income, self.new_regime_slabs)
+        tax, slab_breakdown = self._calculate_from_slabs(taxable_income, self.new_regime_slabs)
         
-        # Add health and education cess
-        cess = taxable_income * 0.04
-        total_tax = tax + cess
+        rebate, marginal_relief = self._calculate_rebate(taxable_income, tax, "new")
+        tax_after_rebate = max(0, tax - rebate - marginal_relief)
+        cess = tax_after_rebate * self.cess_rate
+        total_tax = tax_after_rebate + cess
         
         return {
             "gross_income": income,
             "standard_deduction": self.standard_deduction_new,
             "taxable_income": taxable_income,
             "tax_before_cess": tax,
+            "rebate_87a": rebate,
+            "marginal_relief": marginal_relief,
+            "tax_after_rebate": tax_after_rebate,
             "health_education_cess": cess,
             "total_tax": total_tax,
+            "slab_breakdown": slab_breakdown,
+            "calculation_agent": "Tax Agent",
             "regime": "new"
         }
 
     def _calculate_from_slabs(self, income, slabs):
         """Calculate tax from income slabs"""
         tax = 0
+        breakdown = []
         previous_limit = 0
         
         for limit, rate in slabs:
@@ -77,10 +90,28 @@ class TaxAgent:
                 break
             
             taxable_in_slab = min(income, limit) - previous_limit
-            tax += taxable_in_slab * rate
+            slab_tax = taxable_in_slab * rate
+            tax += slab_tax
+            upper_label = f"₹{limit:,.0f}" if limit != float('inf') else "above"
+            breakdown.append({
+                "from": previous_limit,
+                "to": None if limit == float('inf') else limit,
+                "amount": taxable_in_slab,
+                "rate": rate,
+                "tax": slab_tax,
+                "label": f"₹{previous_limit:,.0f}-{upper_label}: {rate * 100:g}% = ₹{slab_tax:,.0f}",
+            })
             previous_limit = limit
         
-        return tax
+        return tax, breakdown
+
+    def _calculate_rebate(self, taxable_income, slab_tax, regime):
+        """Apply Section 87A and the FY 2025-26 marginal-relief ceiling."""
+        threshold, maximum_rebate = ((500000, 12500) if regime == "old" else (1200000, 60000))
+        rebate = min(slab_tax, maximum_rebate) if taxable_income <= threshold else 0
+        tax_after_rebate = max(0, slab_tax - rebate)
+        marginal_relief = max(0, tax_after_rebate - (taxable_income - threshold)) if regime == "new" and taxable_income > threshold else 0
+        return rebate, marginal_relief
 
     def match_deductions(self, income_data, deductions_data):
         """Match and validate deductions against income"""
@@ -183,6 +214,7 @@ class TaxAgent:
         )
         
         return {
+            "calculation_version": self.calculation_version,
             "total_income": total_income,
             "deductions": deduction_result,
             "tax_old_regime": tax_old,

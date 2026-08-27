@@ -6,7 +6,7 @@ opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
 login_payload = {"email":"Omkartri07@gmail.com","password":"Omkartri@123"}
 login_data = json.dumps(login_payload).encode()
 login_req = urllib.request.Request(
-    "http://127.0.0.1:5001/api/auth/login",
+    "http://localhost:5001/api/auth/login",
     data=login_data,
     headers={"Content-Type":"application/json"},
     method="POST",
@@ -32,7 +32,7 @@ payload = {
 
 analyze_data = json.dumps(payload).encode()
 _analyze_req = urllib.request.Request(
-    "http://127.0.0.1:5001/api/tax/analyze",
+    "http://localhost:5001/api/tax/analyze",
     data=analyze_data,
     headers={"Content-Type": "application/json"},
     method="POST",

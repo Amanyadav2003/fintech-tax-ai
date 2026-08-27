@@ -11,6 +11,8 @@
   margin-bottom: 60px;
 }
 
+@media print { .app-header,.chat-widget-layer,.results-header button { display:none !important; } .results-container{padding:0}.result-card,.summary-card{box-shadow:none;break-inside:avoid} }
+
 .results-header h1 {
   font-size: 2.8rem;
   font-weight: 800;
@@ -24,6 +26,9 @@
   color: var(--gray);
   font-weight: 500;
 }
+
+.results-actions{display:flex;justify-content:center;gap:10px;margin-top:20px;flex-wrap:wrap}.filing-table{border:1px solid var(--gray-lighter);border-radius:8px;overflow:auto}.filing-table-head,.filing-table-row{display:grid;grid-template-columns:1.2fr .8fr 1.6fr;gap:14px;min-width:620px;padding:13px 15px;align-items:center}.filing-table-head{background:#f1f5f9;color:var(--gray);font-size:.75rem;font-weight:800;text-transform:uppercase}.filing-table-row{border-top:1px solid var(--gray-lighter);color:var(--dark-light);font-size:.9rem}.filing-table-row strong{color:var(--primary-dark)}.agent-note,.cess-note{color:var(--gray);font-size:.82rem}.calculation-details{border:1px solid var(--gray-lighter);border-radius:8px;padding:14px;margin-top:12px}.calculation-details summary{display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:800;color:var(--primary-dark)}.slab-row{display:flex;justify-content:space-between;gap:15px;padding:10px 0;border-bottom:1px solid #eef2f7;font-size:.9rem}.slab-row strong{color:var(--primary-dark)}.regime-advisory{margin-bottom:30px;padding:20px;border-left:4px solid #d97706;background:#fff7ed;color:#7c2d12}.regime-advisory p{margin:8px 0 0;line-height:1.6}.document-warning{margin:0 0 22px;padding:16px;border:1px solid #f59e0b;border-radius:8px;background:#fffbeb;color:#78350f}.document-warning p{margin:6px 0 12px}.document-warning div{display:flex;gap:8px;flex-wrap:wrap}.document-warning button{border:1px solid #d97706;border-radius:6px;background:#fff;padding:8px 12px;cursor:pointer;color:#92400e}
+.legacy-warning{margin:0 0 20px;padding:16px;border:1px solid #f59e0b;border-radius:8px;background:#fffbeb;color:#78350f}.legacy-warning p{margin:6px 0 0;line-height:1.5}
 
 .result-card {
   background: var(--white);

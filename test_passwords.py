@@ -20,7 +20,7 @@ for password in test_passwords:
     data = json.dumps(payload).encode()
     
     req = urllib.request.Request(
-        "http://127.0.0.1:5001/api/auth/login",
+        "http://localhost:5001/api/auth/login",
         data=data,
         headers={"Content-Type": "application/json"},
         method="POST",

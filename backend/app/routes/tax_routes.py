@@ -33,6 +33,29 @@ risk_agent = RiskAgent()
 strategy_agent = StrategyAgent()
 
 
+def _stored_calculation_is_legacy(tax_agent_output):
+    if not tax_agent_output:
+        return False
+    output = json.loads(tax_agent_output) if isinstance(tax_agent_output, str) else tax_agent_output
+    if output.get("calculation_version") == TaxAgent.calculation_version:
+        return False
+    old_result = output.get("tax_old_regime", {})
+    old_rates = {row.get("rate") for row in old_result.get("slab_breakdown", [])}
+    if any(rate in old_rates for rate in (0.10, 0.15, 0.25)):
+        return True
+    new_result = output.get("tax_new_regime", {})
+    new_limits = {row.get("to") for row in new_result.get("slab_breakdown", [])}
+    if 600000 in new_limits or 900000 in new_limits or 1800000 in new_limits:
+        return True
+    for regime in ("tax_old_regime", "tax_new_regime"):
+        result = output.get(regime, {})
+        taxable_income = result.get("taxable_income", 0)
+        cess = result.get("health_education_cess")
+        if taxable_income and cess is not None and abs(cess - taxable_income * 0.04) < 0.01:
+            return True
+    return False
+
+
 @router.post("/filings", response_model=TaxFilingResponse)
 @limiter.limit("10/minute")
 def create_tax_filing(
@@ -78,6 +101,19 @@ def create_tax_filing(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error creating tax filing"
         )
+
+
+@router.get("/filings", response_model=List[TaxFilingResponse])
+@limiter.limit("20/minute")
+def get_tax_filings(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """List the authenticated user's filings."""
+    return db.query(TaxFiling).filter(
+        TaxFiling.user_id == current_user.id
+    ).order_by(TaxFiling.created_at.desc()).all()
 
 
 @router.post("/analyze", response_model=TaxFilingAnalysis)
@@ -201,8 +237,26 @@ def analyze_direct(
                 "gross_income": income_data["total_income"],
                 "total_deductions": tax_result["deductions"]["total_deductions"],
                 "taxable_income": tax_result["tax_old_regime"]["taxable_income"],
+                "old_regime_taxable_income": tax_result["tax_old_regime"]["taxable_income"],
+                "new_regime_taxable_income": tax_result["tax_new_regime"]["taxable_income"],
                 "old_regime_tax": tax_result["tax_old_regime"]["total_tax"],
                 "new_regime_tax": tax_result["tax_new_regime"]["total_tax"],
+                "tax_year": TaxAgent.tax_year,
+                "old_regime_rebate_87a": tax_result["tax_old_regime"]["rebate_87a"],
+                "new_regime_rebate_87a": tax_result["tax_new_regime"]["rebate_87a"],
+                "old_regime_marginal_relief": tax_result["tax_old_regime"]["marginal_relief"],
+                "new_regime_marginal_relief": tax_result["tax_new_regime"]["marginal_relief"],
+                "old_regime_breakdown": tax_result["tax_old_regime"]["slab_breakdown"],
+                "new_regime_breakdown": tax_result["tax_new_regime"]["slab_breakdown"],
+                "old_regime_cess": tax_result["tax_old_regime"]["health_education_cess"],
+                "new_regime_cess": tax_result["tax_new_regime"]["health_education_cess"],
+                "filing_pack": [
+                    {"item": "Gross salary", "amount": income_data["salary"], "itr_field": "Schedule S, Salary income"},
+                    {"item": "Interest income", "amount": income_data["interest"], "itr_field": "Schedule OS, Income from other sources"},
+                    {"item": "Section 80C deduction", "amount": tax_result["deductions"]["matched_deductions"]["80c_investments"], "itr_field": "Schedule VI-A, Section 80C"},
+                    {"item": "Section 80D deduction", "amount": tax_result["deductions"]["matched_deductions"]["80d_health_insurance"], "itr_field": "Schedule VI-A, Section 80D"},
+                    {"item": "Home-loan interest", "amount": tax_result["deductions"]["matched_deductions"]["80emi_home_loan"], "itr_field": "Schedule HP / Schedule VI-A, verify with current ITR form"},
+                ],
             },
             "risk_analysis": {
                 "audit_risk_score": risk_result["overall_audit_risk_score"],
@@ -241,10 +295,13 @@ def get_analysis_history(request: Request, current_user: User = Depends(get_curr
         "tax_new_regime": filing.tax_new_regime,
         "potential_savings": abs(filing.tax_old_regime - filing.tax_new_regime),
         "audit_risk_score": (json.loads(filing.risk_agent_output).get("overall_audit_risk_score", 0) if filing.risk_agent_output else 0),
+        "calculation_version": (json.loads(filing.tax_agent_output).get("calculation_version") if filing.tax_agent_output else None),
+        "legacy_calculation_warning": _stored_calculation_is_legacy(filing.tax_agent_output),
     } for filing in filings]
 
 
-@router.post("/analyze/{filing_id}", response_model=TaxFilingAnalysis)
+@router.post("/analyze/{filing_id}", response_model=None)
+@router.post("/filings/{filing_id}/analyze", response_model=None)
 @limiter.limit("5/minute")
 def analyze_filing(
     request: Request,
@@ -401,6 +458,8 @@ def get_analysis_results(
             "tax_agent_output": json.loads(filing.tax_agent_output) if filing.tax_agent_output else None,
             "risk_agent_output": json.loads(filing.risk_agent_output) if filing.risk_agent_output else None,
             "strategy_agent_output": json.loads(filing.strategy_agent_output) if filing.strategy_agent_output else None,
+            "calculation_version": (json.loads(filing.tax_agent_output).get("calculation_version") if filing.tax_agent_output else None),
+            "legacy_calculation_warning": _stored_calculation_is_legacy(filing.tax_agent_output),
         }
     
     except HTTPException as e:
@@ -674,6 +733,31 @@ history_agent = HistoryAgent()
 scenario_agent = ScenarioAgent()
 
 
+def _chat_analysis_context(current_user: User, db: Session) -> dict:
+    """Build Chat context from the latest filing owned by the current user."""
+    filing = db.query(TaxFiling).filter(
+        TaxFiling.user_id == current_user.id,
+        TaxFiling.status == "analyzed",
+    ).order_by(TaxFiling.created_at.desc()).first()
+    if not filing:
+        return {}
+
+    tax_output = filing.tax_agent_output or {}
+    if isinstance(tax_output, str):
+        tax_output = json.loads(tax_output)
+    return {
+        "tax_analysis": {
+            "recommended_regime": filing.recommended_regime,
+            "gross_income": filing.total_income or 0,
+            "total_deductions": filing.total_deductions or 0,
+            "old_regime_tax": filing.tax_old_regime or 0,
+            "new_regime_tax": filing.tax_new_regime or 0,
+            "old_regime_taxable_income": (tax_output.get("tax_old_regime") or {}).get("taxable_income", filing.taxable_income or 0),
+            "new_regime_taxable_income": (tax_output.get("tax_new_regime") or {}).get("taxable_income", 0),
+        }
+    }
+
+
 @router.post("/chat", response_model=ChatResponse)
 @limiter.limit("20/minute")
 def chat(
@@ -690,6 +774,7 @@ def chat(
         
         # Create conversation context for user
         conversation = ConversationContext(str(current_user.id))
+        conversation.analysis_context = _chat_analysis_context(current_user, db)
         
         # Use EnhancedChatAgent
         result = enhanced_chat_agent.generate_response(query.message, conversation)

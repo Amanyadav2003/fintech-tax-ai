@@ -2,7 +2,7 @@ import requests
 import json
 
 # Test login with the fix
-url = "http://127.0.0.1:5000/api/auth/login"
+url = "http://localhost:5000/api/auth/login"
 data = {
     "email": "testuser123@example.com",
     "password": "Test@12345"
@@ -19,7 +19,7 @@ if response.status_code == 200:
         print(f"\n✓ Access token received: {token[:20]}...")
         
         # Test tax endpoint with token
-        tax_url = "http://127.0.0.1:5000/api/tax/analyze"
+        tax_url = "http://localhost:5000/api/tax/analyze"
         headers = {"Authorization": f"Bearer {token}"}
         tax_data = {
             "filing_year": 2024,

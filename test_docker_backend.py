@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Comprehensive Step 2 Test Checklist for TaxMate AI Docker Backend
-Tests the REAL FastAPI backend running in Docker (http://127.0.0.1:5000)
+Tests the REAL FastAPI backend running in Docker (http://localhost:5000)
 NOT the mock_backend.py
 """
 
@@ -12,7 +12,7 @@ from datetime import datetime
 from typing import Dict, List, Any
 
 # Configuration
-BACKEND_URL = "http://127.0.0.1:5000/api"
+BACKEND_URL = "http://localhost:5000/api"
 TEST_USER_EMAIL = f"testuser_{int(time.time())}@example.com"
 TEST_USER_PASSWORD = "TestPass@123"  # Must have: uppercase, digit, special char
 TEST_USER_PAN = f"TAXPR{int(time.time())%10000:04d}K"  # Format: 5 uppercase + 4 digits + 1 uppercase

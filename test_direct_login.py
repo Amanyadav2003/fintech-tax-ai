@@ -4,7 +4,7 @@ import urllib.request, json
 login_payload = {"email":"Omkartri07@gmail.com","password":"Omkartri@123"}
 login_data = json.dumps(login_payload).encode()
 login_req = urllib.request.Request(
-    "http://127.0.0.1:5001/api/auth/login",
+    "http://localhost:5001/api/auth/login",
     data=login_data,
     headers={"Content-Type":"application/json"},
     method="POST",

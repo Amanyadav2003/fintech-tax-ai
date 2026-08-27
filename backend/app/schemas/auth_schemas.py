@@ -5,6 +5,7 @@ Updated schemas with enhanced validation and security
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 from typing import Optional, Dict, List, Any
 from datetime import datetime
+from .tax_schemas import reject_pii_in_free_text
 
 
 class UserRegister(BaseModel):
@@ -17,9 +18,14 @@ class UserRegister(BaseModel):
     state: str = "Maharashtra"
     employment_type: str = Field(default="Salaried", pattern=r"^(Salaried|Self-employed|Business)$")
     pan_aadhaar_linked: bool = False
-    financial_year: str = "FY 2024-25 (AY 2025-26)"
+    financial_year: str = "FY 2025-26 (AY 2026-27)"
     employer_name: Optional[str] = Field(default=None, max_length=150)
     email_reminders_enabled: bool = True
+
+    @field_validator('employer_name')
+    @classmethod
+    def validate_employer_name(cls, value):
+        return reject_pii_in_free_text(value)
 
     @field_validator('password')
     @classmethod
@@ -82,7 +88,7 @@ class UserResponse(BaseModel):
     created_at: datetime
     employment_type: Optional[str] = None
     pan_aadhaar_linked: bool = False
-    financial_year: str = "FY 2024-25 (AY 2025-26)"
+    financial_year: str = "FY 2025-26 (AY 2026-27)"
     employer_name: Optional[str] = None
     email_reminders_enabled: bool = True
     profile_photo_url: Optional[str] = None
@@ -135,7 +141,7 @@ class TaxFilingCreate(BaseModel):
     @field_validator('filing_year')
     @classmethod
     def validate_filing_year(cls, v):
-        if v > 2024:
+        if v > 2025:
             raise ValueError("Cannot file for future years")
         return v
 

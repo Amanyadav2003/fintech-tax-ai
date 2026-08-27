@@ -10,11 +10,11 @@ login_data = json.dumps(login_payload).encode()
 
 # Frontend would call this (with Origin header)
 login_req = urllib.request.Request(
-    "http://127.0.0.1:5001/api/auth/login",
+    "http://localhost:5001/api/auth/login",
     data=login_data,
     headers={
         "Content-Type":"application/json",
-        "Origin": "http://127.0.0.1:3001"
+        "Origin": "http://localhost:3001"
     },
     method="POST",
 )
@@ -31,7 +31,7 @@ try:
         analyze_payload = {"income_data": {"salary": 1000000}, "deductions_data": {"section80c": 100000}}
         analyze_data = json.dumps(analyze_payload).encode()
         analyze_req = urllib.request.Request(
-            "http://127.0.0.1:5001/api/tax/analyze",
+            "http://localhost:5001/api/tax/analyze",
             data=analyze_data,
             headers={"Content-Type":"application/json"},
             method="POST"

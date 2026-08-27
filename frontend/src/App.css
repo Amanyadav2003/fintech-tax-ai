@@ -35,6 +35,20 @@
   --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+html.dark {
+  --dark: #f3f4f6;
+  --dark-light: #d1d5db;
+  --gray: #9ca3af;
+  --gray-light: #4b5563;
+  --gray-lighter: #374151;
+  --background: #111827;
+  --background-dark: #0b1220;
+  --white: #1f2937;
+  --primary-dark: #bfdbfe;
+  --primary: #93c5fd;
+  --primary-light: #60a5fa;
+}
+
 html, body {
   scroll-behavior: smooth;
 }
@@ -87,6 +101,36 @@ body {
   font-weight: 600;
 }
 
+.session-toast {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(680px, calc(100vw - 28px));
+  padding: 12px 14px;
+  border: 1px solid #fbbf24;
+  border-radius: var(--radius-md);
+  background: #fffbeb;
+  color: #78350f;
+  box-shadow: var(--shadow-md);
+  font-size: .85rem;
+  font-weight: 700;
+}
+
+.session-toast.expired { border-color: #fca5a5; background: #fef2f2; color: #991b1b; }
+.session-toast-close { margin-left: 4px; border: 0; background: transparent; color: inherit; cursor: pointer; font: inherit; white-space: nowrap; }
+html.dark .app-header { background: rgba(17, 24, 39, .88); }
+ .resources-menu { position: relative; z-index: 4000; }
+ .resources-dropdown { position: fixed; top: 74px; right: 24px; z-index: 5000; }
+html.dark .history-row, html.dark .empty-history, html.dark .comparison-panel { background: var(--white); }
+html.dark .view-result { background: #1e3a5f; color: #bfdbfe; }
+html.dark .session-toast { background: #422006; color: #fef3c7; }
+html.dark .session-toast.expired { background: #450a0a; color: #fecaca; }
+
 /* ============== HEADER ============== */
 .app-header {
   background: rgba(255, 255, 255, 0.8);
@@ -95,7 +139,8 @@ body {
   padding: 20px 40px;
   position: sticky;
   top: 0;
-  z-index: 1000;
+  z-index: 3000;
+  isolation: isolate;
   box-shadow: var(--shadow-sm);
 }
 
@@ -116,6 +161,11 @@ body {
   color: var(--primary-dark);
 }
 
+.logo { border: 0; background: transparent; cursor: pointer; }
+.top-nav { display: flex; align-items: center; gap: 18px; margin-left: auto; margin-right: 24px; }
+.top-nav button { border: 0; background: transparent; color: var(--primary); font: inherit; font-weight: 800; cursor: pointer; }
+.top-nav span { color: var(--gray); font-size: .85rem; }
+
 .logo-icon {
   font-size: 1.8rem;
   color: var(--primary);
@@ -125,6 +175,16 @@ body {
   display: flex;
   align-items: center;
   gap: 16px;
+}
+
+@media (max-width: 700px) {
+  .app-header { padding: 14px 16px; }
+  .header-content { gap: 8px; }
+  .logo { font-size: 1.1rem; }
+  .top-nav { gap: 8px; margin-right: 0; }
+  .top-nav span { display: none; }
+  .user-name { display: none; }
+  .main-content { padding: 0 16px; }
 }
 
 .user-email {

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import api from '../services/api';
 import { Camera, CheckCircle2, Mail, ShieldCheck } from 'lucide-react';
 import secureFinanceIllustration from '../assets/secure-finance.svg';
+import { containsPanOrAadhaar, PII_FIELD_MESSAGE } from '../utils/piiValidator';
 
 const formVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -26,7 +27,6 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
   const [resendCountdown, setResendCountdown] = useState(0);
   const [panVerified, setPanVerified] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
-  const [registrationStarted, setRegistrationStarted] = useState(false);
   const [loginOtpPending, setLoginOtpPending] = useState(false);
   const [registrationOtpPending, setRegistrationOtpPending] = useState(false);
   const [registrationOtpVerified, setRegistrationOtpVerified] = useState(false);
@@ -90,7 +90,7 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
     state: formData.state,
     employment_type: employmentType,
     pan_aadhaar_linked: panAadhaarLinked,
-    financial_year: 'FY 2024-25 (AY 2025-26)',
+    financial_year: 'FY 2025-26 (AY 2026-27)',
     employer_name: formData.employer_name || null,
     email_reminders_enabled: emailRemindersEnabled,
   });
@@ -102,7 +102,6 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
     setRegistrationSuccess('');
     try {
       const response = await api.post('auth/send-registration-otp', { email: formData.email });
-      setRegistrationStarted(true);
       setRegistrationOtpPending(true);
       setRegistrationOtpVerified(false);
       setEmailVerified(false);
@@ -260,6 +259,10 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    if (name === 'employer_name' && containsPanOrAadhaar(value)) {
+      setError(PII_FIELD_MESSAGE);
+      return;
+    }
     setFormData(prev => ({ ...prev, [name]: value }));
     setError('');
     if (name === 'pan') {
@@ -525,7 +528,6 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
       }
 
       const response = await api.post('auth/send-registration-otp', { email: formData.email });
-      setRegistrationStarted(true);
       setRegistrationOtpPending(true);
       setRegistrationOtpVerified(false);
       setEmailVerified(false);
@@ -675,12 +677,11 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
 
           {!isLogin && <>
             <motion.div variants={itemVariants} className="form-group"><span className="mb-1.5 block text-sm font-semibold text-slate-700">Employment type</span><div className="flex flex-wrap gap-4">{['Salaried', 'Self-employed', 'Business'].map(option => <label key={option} className="flex items-center gap-2 text-sm text-slate-600"><input type="radio" name="employment_type" value={option} checked={employmentType === option} onChange={(e) => setEmploymentType(e.target.value)} />{option}</label>)}</div></motion.div>
-            <motion.div variants={itemVariants} className="form-group"><label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="financial_year">Financial year</label><select id="financial_year" value="FY 2024-25 (AY 2025-26)" disabled className="w-full rounded-lg border-2 border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-600"><option>FY 2024-25 (AY 2025-26)</option></select></motion.div>
+            <motion.div variants={itemVariants} className="form-group"><label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="financial_year">Financial year</label><select id="financial_year" value="FY 2025-26 (AY 2026-27)" disabled className="w-full rounded-lg border-2 border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-600"><option>FY 2025-26 (AY 2026-27)</option></select></motion.div>
             <motion.div variants={itemVariants} className="form-group"><label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="employer_name">Employer / company name <span className="font-normal text-slate-400">(optional)</span></label><input id="employer_name" type="text" name="employer_name" maxLength="150" placeholder="Your company" value={formData.employer_name} onChange={handleChange} className="w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-navy-500" /></motion.div>
             <motion.div variants={itemVariants}><label className="flex items-start gap-3 text-sm leading-6 text-slate-600"><input type="checkbox" checked={panAadhaarLinked} onChange={(e) => setPanAadhaarLinked(e.target.checked)} className="mt-1" /> <span>My PAN is linked with Aadhaar as required by the Income Tax Department.<span className="block text-xs text-slate-400">Self-declaration only; no government database verification is performed.</span></span></label></motion.div>
             <motion.div variants={itemVariants}><label className="flex items-center gap-3 text-sm text-slate-600"><input type="checkbox" checked={emailRemindersEnabled} onChange={(e) => setEmailRemindersEnabled(e.target.checked)} />Notify me about tax filing deadlines and updates</label></motion.div>
             <motion.div variants={itemVariants} className="flex flex-wrap items-center gap-3"><div className="relative h-20 w-20 overflow-hidden rounded-full border-2 border-slate-200 bg-slate-100">{profilePhotoPreview ? <img src={profilePhotoPreview} alt="Profile preview" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-2xl">👤</div>}<Camera className="absolute bottom-0 right-0 rounded-full bg-navy-700 p-1 text-white" size={24} /></div><label className="cursor-pointer rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-navy-700">Take Photo<input type="file" accept="image/*" capture="environment" onChange={handlePhotoChange} className="hidden" /></label><label className="cursor-pointer rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-navy-700">Choose from Gallery<input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" /></label><span className="w-full text-xs text-slate-500">Optional. Images only, maximum 2MB.</span></motion.div>
-            {registrationStarted && <motion.div variants={itemVariants} className="rounded-xl border border-navy-100 bg-navy-50 p-4"><div className="flex items-center gap-2 text-sm font-semibold text-navy-900"><motion.span animate={{ scale: [1, 1.08, 1] }} transition={{ duration: 2.5, repeat: Infinity }}><Mail className="h-4 w-4 text-navy-500" /></motion.span>Check your email</div><p className="mt-1 text-xs text-slate-600">Enter the 6-digit code sent to {formData.email}.</p><div className="mt-3 flex gap-1.5">{Array.from({ length: 6 }, (_, index) => <motion.input key={index} data-inline-otp-index={index} initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: index * 0.1 }} className={`h-10 w-10 rounded-lg border-2 bg-white text-center font-bold text-navy-900 outline-none ${error ? 'border-red-400 bg-red-50' : emailVerified ? 'border-mint-500' : 'border-slate-200'}`} value={otp[index] || ''} maxLength="1" inputMode="numeric" onChange={(e) => { const digit = e.target.value.replace(/\D/g, '').slice(-1); const next = otp.split(''); next[index] = digit; setOtp(next.join('').slice(0, 6)); if (digit && index < 5) document.querySelector(`[data-inline-otp-index="${index + 1}"]`)?.focus(); setError(''); }} aria-label={`OTP digit ${index + 1}`} />)}</div><div className="mt-3 flex items-center gap-3"><button type="button" onClick={handleSubmit} disabled={loading || otp.length !== 6 || emailVerified} className="fintech-button px-4 py-2 text-xs">{emailVerified ? <><CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Email verified</> : 'Verify email'}</button><div className="relative h-9 w-9"><svg className="h-9 w-9 -rotate-90" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="20" fill="none" stroke="#dbe5ef" strokeWidth="3" /><circle cx="24" cy="24" r="20" fill="none" stroke="#2d5f8b" strokeWidth="3" strokeDasharray="125.66" strokeDashoffset={resendCountdown ? `${125.66 * (resendCountdown / 60)}` : 0} strokeLinecap="round" /></svg>{resendCountdown > 0 && <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-navy-700">{resendCountdown}</span>}</div><button type="button" onClick={handleResend} disabled={loading || resendCountdown > 0 || emailVerified} className="text-xs font-semibold text-navy-700 disabled:text-slate-400">{resendCountdown > 0 ? 'Resend later' : 'Resend OTP'}</button></div></motion.div>}
             <motion.div variants={itemVariants}><label className="flex items-start gap-3 text-sm leading-6 text-slate-600"><input type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} className="mt-1" /> <span>I agree to the <a className="font-semibold text-navy-700" href="/terms">Terms of Service</a> and <a className="font-semibold text-navy-700" href="/privacy">Privacy Policy</a>.</span></label></motion.div>
           </>}
           

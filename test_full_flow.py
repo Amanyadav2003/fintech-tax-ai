@@ -2,7 +2,7 @@ import requests
 import json
 
 # Register a new test user
-register_url = "http://127.0.0.1:5000/api/auth/register"
+register_url = "http://localhost:5000/api/auth/register"
 register_data = {
     "email": "tokentest@example.com",
     "password": "TokenTest@123",
@@ -22,7 +22,7 @@ else:
     print("   ✓ Registration successful")
 
 # Now test login with the new user
-login_url = "http://127.0.0.1:5000/api/auth/login"
+login_url = "http://localhost:5000/api/auth/login"
 login_data = {
     "email": "tokentest@example.com",
     "password": "TokenTest@123"
@@ -44,7 +44,7 @@ if login_response.status_code == 200:
         
         # Test tax endpoint with token
         print("\n3. Testing tax analysis endpoint with token...")
-        tax_url = "http://127.0.0.1:5000/api/tax/analyze"
+        tax_url = "http://localhost:5000/api/tax/analyze"
         headers = {"Authorization": f"Bearer {token}"}
         tax_data = {
             "filing_year": 2024,

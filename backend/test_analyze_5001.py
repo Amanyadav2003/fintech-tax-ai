@@ -7,7 +7,7 @@ payload = {
 
 data = json.dumps(payload).encode()
 req = urllib.request.Request(
-    "http://127.0.0.1:5001/api/tax/analyze",
+    "http://localhost:5001/api/tax/analyze",
     data=data,
     headers={"Content-Type": "application/json"},
     method="POST",

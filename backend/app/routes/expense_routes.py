@@ -2,12 +2,13 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from ..models import Expense, User
 from ..utils.database import get_db
 from ..utils.dependencies import get_current_user
+from ..utils.pii_validator import reject_pii_in_free_text
 
 router = APIRouter(prefix="/api/expenses", tags=["expenses"])
 VALID_CATEGORIES = {"80C Investment", "Medical/Insurance", "Rent", "Home Loan", "Donations", "Other"}
@@ -18,6 +19,11 @@ class ExpenseCreate(BaseModel):
     category: str
     description: Optional[str] = Field(default=None, max_length=300)
     date: datetime
+
+    @field_validator("description")
+    @classmethod
+    def validate_description(cls, value):
+        return reject_pii_in_free_text(value)
 
 
 def _serialize(expense: Expense):
