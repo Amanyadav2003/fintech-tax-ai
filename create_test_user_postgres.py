@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Create a test user in PostgreSQL database"""
 
+import os
 from backend.app.utils.database import SessionLocal
 from backend.app.models import User
 from backend.app.utils.security import SecurityManager
@@ -11,10 +12,12 @@ db = SessionLocal()
 try:
     # Create a test user
     sm = SecurityManager()
-    hashed_password = sm.hash_password("Omkartri@123")
+    test_email = os.getenv("TEST_POSTGRES_EMAIL", "postgres-user@example.invalid")
+    test_password = os.getenv("TEST_POSTGRES_PASSWORD", "TestOnly-Postgres-123!")
+    hashed_password = sm.hash_password(test_password)
     
     user = User(
-        email="Omkartri07@gmail.com",
+        email=test_email,
         name="Omkar Test",
         phone="+91 9876543210",
         pan="BYBPK8880K",  # Example PAN

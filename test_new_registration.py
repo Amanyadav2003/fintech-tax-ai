@@ -1,10 +1,11 @@
+import os
 import urllib.request, json
 
 # Test registration with a new user
 new_user = {
     "name": "Test Register",
-    "email": "testregister@gmail.com",
-    "password": "TestPass@123",
+    "email": os.getenv("TEST_REGISTER_EMAIL", "registration-user@example.invalid"),
+    "password": os.getenv("TEST_REGISTER_PASSWORD", "TestOnly-Register-123!"),
     "phone": "9876543210",
     "pan": "XYZZZ1234D",
     "age": 30,

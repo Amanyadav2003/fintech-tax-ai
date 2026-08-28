@@ -1,22 +1,18 @@
+import os
 import urllib.request, json, http.cookiejar
 
-# Test different passwords for final@test.com
-test_passwords = [
-    "FinalUser@123",
-    "Final@123",
-    "password",
-    "test",
-    "123456",
-]
+# Test different passwords for a configured test identity.
+test_passwords = os.getenv("TEST_PASSWORD_CANDIDATES", "TestOnly-Final-123!,TestOnly-Alternate-123!,password,test,123456").split(",")
+test_email = os.getenv("TEST_FINAL_EMAIL", "final-user@example.invalid")
 
 cj = http.cookiejar.CookieJar()
 opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
 
-print("Testing login attempts for final@test.com")
+print(f"Testing login attempts for {test_email}")
 print("=" * 60)
 
 for password in test_passwords:
-    payload = {"email": "final@test.com", "password": password}
+    payload = {"email": test_email, "password": password}
     data = json.dumps(payload).encode()
     
     req = urllib.request.Request(
@@ -42,5 +38,5 @@ for password in test_passwords:
 
 print("\n" + "=" * 60)
 print("If none work, try the test user instead:")
-print("Email: Omkartri07@gmail.com")
-print("Password: Omkartri@123")
+print(f"Email: {test_email}")
+print("Passwords: supplied through TEST_PASSWORD_CANDIDATES")

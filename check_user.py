@@ -1,3 +1,4 @@
+import os
 import sqlite3
 
 db_path = "backend/taxmate_ai.db"
@@ -7,12 +8,12 @@ try:
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     
-    # Check final@test.com user
+    target_email = os.getenv("TEST_CHECK_EMAIL", "final-user@example.invalid")
     cursor.execute("""
         SELECT id, email, name, phone, pan, is_active, created_at
         FROM users 
-        WHERE email = 'final@test.com'
-    """)
+        WHERE email = ?
+    """, (target_email,))
     
     user = cursor.fetchone()
     if user:
@@ -27,7 +28,7 @@ try:
         print("\n⚠️  The user exists, but the password might not match what you entered.")
         print("\nLet me test login with a known working user instead...")
     else:
-        print("❌ User 'final@test.com' not found!")
+        print(f"❌ User '{target_email}' not found!")
     
     conn.close()
     

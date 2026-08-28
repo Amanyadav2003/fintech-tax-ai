@@ -1,11 +1,12 @@
+import os
 import requests
 import json
 
 # Register a new test user
 register_url = "http://localhost:5000/api/auth/register"
 register_data = {
-    "email": "tokentest@example.com",
-    "password": "TokenTest@123",
+    "email": os.getenv("TEST_FLOW_EMAIL", "token-user@example.invalid"),
+    "password": os.getenv("TEST_FLOW_PASSWORD", "TestOnly-Flow-123!"),
     "name": "Token Tester",
     "phone": "9876543210",
     "pan": "TOKNT1234T",
@@ -24,8 +25,8 @@ else:
 # Now test login with the new user
 login_url = "http://localhost:5000/api/auth/login"
 login_data = {
-    "email": "tokentest@example.com",
-    "password": "TokenTest@123"
+    "email": register_data["email"],
+    "password": register_data["password"]
 }
 
 print("\n2. Testing login with new user...")

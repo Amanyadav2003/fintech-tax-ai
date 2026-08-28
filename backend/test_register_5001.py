@@ -1,9 +1,10 @@
+import os
 import urllib.request, json
 
 data = json.dumps({
     "name": "Omkar",
-    "email": "Omkartri07@gmail.com",
-    "password": "Omkartri@123",
+    "email": os.getenv("TEST_REGISTER_EMAIL", "register-user@example.invalid"),
+    "password": os.getenv("TEST_REGISTER_PASSWORD", "TestOnly-Register-123!"),
     "phone": "7045575020",
     "pan": "ASDFG4562A",
     "age": 25,

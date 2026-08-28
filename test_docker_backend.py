@@ -14,7 +14,7 @@ from typing import Dict, List, Any
 # Configuration
 BACKEND_URL = "http://localhost:5000/api"
 TEST_USER_EMAIL = f"testuser_{int(time.time())}@example.com"
-TEST_USER_PASSWORD = "TestPass@123"  # Must have: uppercase, digit, special char
+TEST_USER_PASSWORD = os.getenv("DOCKER_TEST_PASSWORD", "TestOnly-Docker-123!")  # Must have: uppercase, digit, special char
 TEST_USER_PAN = f"TAXPR{int(time.time())%10000:04d}K"  # Format: 5 uppercase + 4 digits + 1 uppercase
 
 # Test results tracking

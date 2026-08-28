@@ -1,3 +1,4 @@
+import os
 import urllib.request, json, http.cookiejar
 
 # Test what the frontend would see
@@ -5,7 +6,7 @@ cj = http.cookiejar.CookieJar()
 opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
 
 # Simulate frontend login request
-login_payload = {"email":"Omkartri07@gmail.com","password":"Omkartri@123"}
+login_payload = {"email": os.getenv("TEST_LOGIN_EMAIL", "login-user@example.invalid"), "password": os.getenv("TEST_LOGIN_PASSWORD", "TestOnly-Login-123!")}
 login_data = json.dumps(login_payload).encode()
 
 # Frontend would call this (with Origin header)

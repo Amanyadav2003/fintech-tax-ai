@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 import secrets
 import threading
+import os
 from pathlib import Path
 from uuid import uuid4
 
@@ -30,6 +31,12 @@ MAX_PROFILE_PHOTO_BYTES = 2 * 1024 * 1024
 resend_attempts = {}
 pending_registrations = {}
 resend_attempts_lock = threading.Lock()
+
+SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true" or os.getenv("ENVIRONMENT", "development").lower() == "production"
+SESSION_COOKIE_HTTPONLY = os.getenv("SESSION_COOKIE_HTTPONLY", "true").lower() == "true"
+SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE", "Lax")
+if os.getenv("ENVIRONMENT", "development").lower() == "production":
+    SESSION_COOKIE_SAMESITE = "None"
 
 
 def _normalize_email(email: str) -> str:
@@ -59,10 +66,10 @@ def _issue_tokens(user: User) -> JSONResponse:
         "message": "Login successful",
         "user": {"id": user.id, "email": user.email, "name": user.name}
     })
-    response.set_cookie("access_token", access_token, httponly=True, secure=False,
-                        samesite="lax", max_age=86400, path="/")
-    response.set_cookie("refresh_token", refresh_token, httponly=True, secure=False,
-                        samesite="lax", max_age=604800, path="/")
+    response.set_cookie("access_token", access_token, httponly=SESSION_COOKIE_HTTPONLY, secure=SESSION_COOKIE_SECURE,
+                        samesite=SESSION_COOKIE_SAMESITE, max_age=86400, path="/")
+    response.set_cookie("refresh_token", refresh_token, httponly=SESSION_COOKIE_HTTPONLY, secure=SESSION_COOKIE_SECURE,
+                        samesite=SESSION_COOKIE_SAMESITE, max_age=604800, path="/")
     return response
 
 
@@ -423,9 +430,9 @@ def refresh_token(request: Request, db: Session = Depends(get_db)):
     response.set_cookie(
         key="access_token",
         value=new_access_token,
-        httponly=True,
-        secure=False,
-        samesite="lax",
+        httponly=SESSION_COOKIE_HTTPONLY,
+        secure=SESSION_COOKIE_SECURE,
+        samesite=SESSION_COOKIE_SAMESITE,
         max_age=86400,  # 24 hours
         path="/"
     )

@@ -2,7 +2,37 @@
 
 > AI-Powered Tax Decision Engine for Indian Salaried Professionals (₹5L-₹25L annually)
 
-**Status**: ✅ Production Ready | **Test Coverage**: End-to-End | **Security**: JWT + Encryption + Rate Limiting
+**Status**: Deployment-ready baseline | **Test Coverage**: End-to-End | **Security**: JWT + Encryption + Rate Limiting
+
+## Production Deployment (Vercel + Render + Neon)
+
+No secret values belong in the repository. Configure these names in the hosting dashboards.
+
+### Vercel
+
+Create a production environment variable named `REACT_APP_API_URL` with the Render API URL ending in `/api`, for example `https://your-render-service.onrender.com/api`, then redeploy the frontend.
+
+### Render
+
+Run the backend from `backend/` with `uvicorn app.main:app --host 0.0.0.0 --port $PORT` (or use the Dockerfile and map the service port). Configure:
+
+`DATABASE_URL`, `BREVO_API_KEY`, `BREVO_SENDER_EMAIL`, `SECRET_KEY`, `ENCRYPTION_KEY`, `FRONTEND_URL`, `CORS_ORIGINS`, `ALLOWED_HOSTS`, `ENVIRONMENT=production`, `SESSION_COOKIE_SECURE=true`, and `SESSION_COOKIE_SAMESITE=None`.
+
+Set `FRONTEND_URL` to the exact Vercel origin, such as `https://your-app.vercel.app`. `CORS_ORIGINS` may contain additional comma-separated origins. Set `ALLOWED_HOSTS` to the Render hostname and any custom API hostname.
+
+### Neon Database Initialization
+
+This repository does not use Alembic. On startup, FastAPI calls SQLAlchemy `Base.metadata.create_all`, which creates the current schema in a fresh PostgreSQL/Neon database. To initialize manually from the backend directory after exporting `DATABASE_URL`, `SECRET_KEY`, and `ENCRYPTION_KEY`, run:
+
+```bash
+python -c "from app.utils.database import init_db; init_db()"
+```
+
+The SQL files in `backend/migrations/` are incremental upgrades for older databases; they are not a complete empty-database migration chain.
+
+### Health Check
+
+Configure the Render health check path as `/health`. The endpoint is `GET https://your-render-service.onrender.com/health`.
 
 ## 🎯 Vision
 
@@ -75,7 +105,7 @@ pip install -r requirements.txt
 
 # Configure environment
 cp .env.example .env.local
-# Edit .env.local with JWT_SECRET_KEY, DATABASE_URL, etc.
+# Edit .env.local with SECRET_KEY, DATABASE_URL, and other environment values.
 
 # Create database
 createdb taxmate_ai -U postgres
@@ -231,7 +261,7 @@ See [TESTING_GUIDE.md](./TESTING_GUIDE.md) for comprehensive testing procedures:
 DATABASE_URL=postgresql://postgres:password@localhost:5432/taxmate_ai
 
 # JWT
-JWT_SECRET_KEY=<generate: python -c "import secrets; print(secrets.token_urlsafe(32))">
+SECRET_KEY=<generate: python -c "import secrets; print(secrets.token_urlsafe(32))">
 JWT_ALGORITHM=HS256
 TOKEN_EXPIRE_MINUTES=30
 REFRESH_TOKEN_EXPIRE_DAYS=7
@@ -270,7 +300,7 @@ Current benchmarks (local development):
 ## 🚀 Production Deployment
 
 ### Pre-Deployment Checklist
-- [ ] Generate new `JWT_SECRET_KEY`
+- [ ] Generate new `SECRET_KEY`
 - [ ] Generate new `ENCRYPTION_KEY`
 - [ ] Set real `SENTRY_DSN`
 - [ ] Configure PostgreSQL backups

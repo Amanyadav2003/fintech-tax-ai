@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Quick test to verify chat appears only after analysis"""
+import os
 from app.utils.database import SessionLocal
 from app.models import User, TaxFiling
 from app.utils.security import SecurityManager
@@ -11,8 +12,8 @@ security = SecurityManager()
 
 # Create user
 user_data = {
-    "email": "demo@test.com",
-    "password": "Demo@Pass123",
+    "email": os.getenv("TEST_DATA_EMAIL", "demo-user@example.invalid"),
+    "password": os.getenv("TEST_DATA_PASSWORD", "TestOnly-Data-123!"),
     "name": "Demo User",
     "phone": "9999999999",
     "pan": "AABCD1234E",

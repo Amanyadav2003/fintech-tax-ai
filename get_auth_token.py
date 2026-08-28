@@ -5,13 +5,14 @@ Register a test user and get a token for testing
 
 import requests
 import json
+import os
 import sys
 
 BASE_URL = "http://localhost:5000/api"
 
 # Use a simpler email
-test_email = "test@example.com"
-test_password = "TestPassword123!"
+test_email = os.getenv("TEST_AUTH_EMAIL", "auth-user@example.invalid")
+test_password = os.getenv("TEST_AUTH_PASSWORD", "TestOnly-Auth-123!")
 
 print("Attempting to register test user...")
 

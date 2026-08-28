@@ -47,12 +47,16 @@ app = FastAPI(
 # Add rate limiter state
 app.state.limiter = limiter
 
-# CORS middleware - allow local frontend dev origins and merge with env overrides
+# CORS middleware - allow local frontend dev origins and configured deployments
 default_local_origins = [
     "http://localhost:3000",
     "http://localhost:3001",
 ]
-allowed_origins = [origin.strip() for origin in os.getenv("CORS_ORIGINS", "").split(",") if origin.strip()]
+configured_origins = [
+    os.getenv("FRONTEND_URL", "").strip(),
+    *[origin.strip() for origin in os.getenv("CORS_ORIGINS", "").split(",") if origin.strip()],
+]
+allowed_origins = [origin for origin in configured_origins if origin]
 for origin in default_local_origins:
     if origin not in allowed_origins:
         allowed_origins.append(origin)
@@ -84,7 +88,7 @@ SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE", "Lax")
 
 if os.getenv("ENVIRONMENT") == "production":
     SESSION_COOKIE_SECURE = True  # Enforce HTTPS in production
-    SESSION_COOKIE_SAMESITE = "Strict"  # Prevent CSRF attacks
+    SESSION_COOKIE_SAMESITE = "None"  # Vercel and Render are cross-site origins
     
 logger.info(f"Session Cookie Security: Secure={SESSION_COOKIE_SECURE}, HttpOnly={SESSION_COOKIE_HTTPONLY}, SameSite={SESSION_COOKIE_SAMESITE}")
 

@@ -5,6 +5,7 @@ Tests: Mode detection, Module routing, Response generation
 Includes authentication flow
 """
 
+import os
 import requests
 import json
 from pprint import pprint
@@ -60,7 +61,7 @@ def get_auth_token():
     
     # Test credentials
     test_email = f"test_user_{int(time.time())}@example.com"
-    test_password = "TestPassword123!"
+    test_password = os.getenv("CHAT_TEST_PASSWORD", "TestOnly-Chat-123!")
     
     try:
         # Try to register

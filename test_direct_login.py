@@ -1,7 +1,8 @@
+import os
 import urllib.request, json
 
 # Test login to port 5001 directly
-login_payload = {"email":"Omkartri07@gmail.com","password":"Omkartri@123"}
+login_payload = {"email": os.getenv("TEST_LOGIN_EMAIL", "login-user@example.invalid"), "password": os.getenv("TEST_LOGIN_PASSWORD", "TestOnly-Login-123!")}
 login_data = json.dumps(login_payload).encode()
 login_req = urllib.request.Request(
     "http://localhost:5001/api/auth/login",

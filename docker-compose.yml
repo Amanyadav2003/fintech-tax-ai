@@ -30,11 +30,14 @@ services:
       SECRET_KEY: ${SECRET_KEY}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3001}
       ENVIRONMENT: ${ENVIRONMENT:-development}
       SENTRY_DSN: ${SENTRY_DSN}
       BREVO_API_KEY: ${BREVO_API_KEY}
       BREVO_SENDER_NAME: ${BREVO_SENDER_NAME:-TaxMate AI}
       BREVO_SENDER_EMAIL: ${BREVO_SENDER_EMAIL:-no-reply@example.com}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      SESSION_COOKIE_SAMESITE: ${SESSION_COOKIE_SAMESITE:-Lax}
     depends_on:
       db:
         condition: service_healthy

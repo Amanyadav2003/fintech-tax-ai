@@ -1,3 +1,4 @@
+import os
 import sys
 import os
 
@@ -9,8 +10,8 @@ from app.utils.database import SessionLocal
 
 def create_user():
     db = SessionLocal()
-    email = "testuser1@example.com"
-    password = "Password123!"
+    email = os.getenv("TEST_USER_EMAIL", "test-user@example.invalid")
+    password = os.getenv("TEST_USER_PASSWORD", "TestOnly-User-123!")
     
     user = db.query(User).filter(User.email == email).first()
     if user:

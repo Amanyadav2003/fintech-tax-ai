@@ -1,6 +1,7 @@
+import os
 import urllib.request, json
 
-payload = {"email": "final@test.com", "password": "Final@123"}
+payload = {"email": os.getenv("TEST_FINAL_EMAIL", "final-user@example.invalid"), "password": os.getenv("TEST_FINAL_PASSWORD", "TestOnly-Final-123!")}
 data = json.dumps(payload).encode()
 
 req = urllib.request.Request(

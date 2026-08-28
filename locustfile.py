@@ -14,6 +14,7 @@ from locust import HttpUser, task, between, events
 from random import randint, choice
 import json
 import logging
+import os
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -28,7 +29,7 @@ class TaxMateUser(HttpUser):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.user_email = None
-        self.user_password = "TestPassword123!"
+        self.user_password = os.getenv("LOAD_TEST_PASSWORD", "TestOnly-Load-123!")
         self.user_id = None
         self.filing_id = None
     

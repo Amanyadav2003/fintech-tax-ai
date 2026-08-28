@@ -1,11 +1,12 @@
+import os
 import requests
 import json
 
 # Test login with the fix
 url = "http://localhost:5000/api/auth/login"
 data = {
-    "email": "testuser123@example.com",
-    "password": "Test@12345"
+    "email": os.getenv("TEST_TOKEN_EMAIL", "token-user@example.invalid"),
+    "password": os.getenv("TEST_TOKEN_PASSWORD", "TestOnly-Token-123!")
 }
 
 response = requests.post(url, json=data)
