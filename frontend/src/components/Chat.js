@@ -23,7 +23,7 @@ function Chat({ analysis, onClose }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showHistory, setShowHistory] = useState(false);
-  const [sessionId, setSessionId] = useState(`session_${Date.now()}`);
+  const [sessionId] = useState(`session_${Date.now()}`);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {

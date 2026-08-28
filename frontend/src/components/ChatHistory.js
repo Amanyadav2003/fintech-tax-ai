@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
 import '../styles/ChatHistory.css';
 
@@ -17,22 +17,7 @@ const ChatHistory = ({ isOpen, onClose, sessionId }) => {
     }
   }, [isOpen]);
 
-  useEffect(() => {
-    if (currentSession) {
-      fetchMessages(currentSession);
-    }
-  }, [currentSession, filter]);
-
-  const fetchSessions = async () => {
-    try {
-      const response = await api.get('tax/history/sessions');
-      setSessions(response.data.sessions || []);
-    } catch (error) {
-      console.error('Error fetching sessions:', error);
-    }
-  };
-
-  const fetchMessages = async (sessionId) => {
+  const fetchMessages = useCallback(async (sessionId) => {
     setLoading(true);
     try {
       const response = await api.get('tax/history/chat', {
@@ -47,6 +32,21 @@ const ChatHistory = ({ isOpen, onClose, sessionId }) => {
       console.error('Error fetching messages:', error);
     } finally {
       setLoading(false);
+    }
+  }, [filter]);
+
+  useEffect(() => {
+    if (currentSession) {
+      fetchMessages(currentSession);
+    }
+  }, [currentSession, fetchMessages]);
+
+  const fetchSessions = async () => {
+    try {
+      const response = await api.get('tax/history/sessions');
+      setSessions(response.data.sessions || []);
+    } catch (error) {
+      console.error('Error fetching sessions:', error);
     }
   };
 
