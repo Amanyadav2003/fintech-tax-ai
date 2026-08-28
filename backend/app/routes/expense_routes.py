@@ -46,6 +46,8 @@ def list_expenses(month: Optional[str] = Query(default=None, pattern=r"^\d{4}-\d
     query = db.query(Expense).filter(Expense.user_id == current_user.id)
     if month:
         year, month_number = map(int, month.split("-"))
+        if not 1 <= month_number <= 12:
+            raise HTTPException(status_code=422, detail="Month must be between 01 and 12")
         start = datetime(year, month_number, 1)
         end = datetime(year + (month_number == 12), 1 if month_number == 12 else month_number + 1, 1)
         query = query.filter(Expense.date >= start, Expense.date < end)

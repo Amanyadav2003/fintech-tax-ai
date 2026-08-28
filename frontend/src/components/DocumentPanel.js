@@ -13,7 +13,7 @@ export const DOCUMENTS = {
   rent: { title: 'Rent receipts', description: 'Rent receipts provide a record of annual rent paid and can support an eligible rent-related claim where the rules apply.', fields: { rent_paid_80gg: 'Annual rent paid' } },
 };
 
-function DocumentPanel({ documentType, onClose, onUseValues, onOpenVault }) {
+function DocumentPanel({ documentType, onClose, onOpenVault }) {
   const metadata = DOCUMENTS[documentType];
   const [file, setFile] = useState(null);
   const [result, setResult] = useState(null);
@@ -41,7 +41,7 @@ function DocumentPanel({ documentType, onClose, onUseValues, onOpenVault }) {
       </div>
       {file && !result && <button className="primary-action" onClick={upload} disabled={loading}>{loading ? 'Extracting...' : 'Upload and extract'}</button>}
       {error && <p className="document-error" role="alert">{error}</p>}
-      {result && <div className="suggested-values"><div className="suggested-heading"><div><h3>Suggested values - please review</h3><p>{result.extraction_note}</p></div><CheckCircle2 size={20} /></div>{Object.keys(values).length === 0 && <p className="extraction-fallback">We couldn't auto-read this document. Please enter the values manually and review them before using.</p>}{Object.entries(metadata.fields).map(([key, label]) => <label key={key}>{label}<input value={values[key] ?? ''} onChange={event => setValues(previous => ({ ...previous, [key]: event.target.value }))} placeholder="Enter manually if needed" /></label>)}<div className="document-actions"><button className="primary-action" onClick={() => onUseValues(values)}>Use These Values</button><button className="text-action" onClick={onOpenVault}>View previously uploaded {metadata.title}</button></div></div>}
+      {result && <div className="suggested-values"><div className="suggested-heading"><div><h3>Suggested values - please review</h3><p>{result.extraction_note}</p></div><CheckCircle2 size={20} /></div>{Object.keys(values).length === 0 && <p className="extraction-fallback">We couldn't auto-read this document. Please enter the values manually and review them before using.</p>}{result.metadata?.classification?.message && <p className="extraction-fallback">AI suggestion: {result.metadata.classification.message}</p>}{result.metadata?.sections?.length > 1 && <p className="extraction-fallback">This PDF likely contains multiple documents. Review the detected page sections in My Documents and confirm their categories before applying anything.</p>}{Object.entries(metadata.fields).map(([key, label]) => <label key={key}>{label}<input value={values[key] ?? ''} onChange={event => setValues(previous => ({ ...previous, [key]: event.target.value }))} placeholder="Enter manually if needed" /></label>)}<div className="document-actions"><button className="primary-action" onClick={() => onOpenVault({ documentId: result.id, values })}>Review all documents in Vault</button></div></div>}
       {!result && <button className="text-action" onClick={onOpenVault}>View previously uploaded {metadata.title}</button>}
     </section>
   </div>;

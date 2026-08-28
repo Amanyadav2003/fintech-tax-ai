@@ -56,6 +56,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [chatOpen, setChatOpen] = useState(false);
   const [documentValues, setDocumentValues] = useState({});
+  const [documentReviewSeed, setDocumentReviewSeed] = useState(null);
   const [sessionNotice, setSessionNotice] = useState('');
   const [hasUnreadUpdate, setHasUnreadUpdate] = useState(() => isUpdateUnread());
   const [darkMode, setDarkMode] = useState(() => {
@@ -229,14 +230,19 @@ function App() {
     setCurrentStep('income-type');
   };
 
-  const handleUseDocumentValues = (values) => {
+  const handleApplyDocumentValues = (values) => {
     setDocumentValues(values);
-    const deductionKeys = ['investments_80c', 'health_insurance_80d', 'home_loan_interest_24b', 'rent_paid_80gg'];
+    const deductionKeys = ['investments_80c', 'health_insurance_80d', 'home_loan_interest_24b', 'rent_paid_80gg', 'donations_80g', 'other_deductions'];
     setCurrentStep(Object.keys(values).some(key => deductionKeys.includes(key)) ? 'deductions' : 'income');
   };
 
   const handleOpenDashboard = () => {
     setCurrentStep('dashboard');
+  };
+
+  const handleOpenDocuments = (seed = null) => {
+    setDocumentReviewSeed(seed);
+    setCurrentStep('documents');
   };
 
   const handleBackToResults = () => {
@@ -281,7 +287,7 @@ function App() {
       case 'results':
         return <Results analysis={analysis} />;
       case 'home':
-        return <Home user={user || { email: userEmail }} onStart={() => setCurrentStep('income-type')} onHistory={() => setCurrentStep('history')} onViewResult={handleViewResult} onOpenDocuments={() => setCurrentStep('documents')} onUseDocumentValues={handleUseDocumentValues} />;
+        return <Home user={user || { email: userEmail }} onStart={() => setCurrentStep('income-type')} onHistory={() => setCurrentStep('history')} onViewResult={handleViewResult} onOpenDocuments={handleOpenDocuments} />;
       case 'history':
         return <History onBack={() => setCurrentStep('home')} onViewResult={handleViewResult} />;
       case 'expenses':
@@ -291,7 +297,7 @@ function App() {
       case 'profile':
         return <Profile user={user || { email: userEmail }} />;
       case 'documents':
-        return <Documents />;
+        return <Documents onApplyValues={handleApplyDocumentValues} reviewSeed={documentReviewSeed} />;
       case 'changelog':
         return <Changelog onBack={() => setCurrentStep(userEmail ? 'home' : 'auth')} />;
       case 'resource-income-tax':

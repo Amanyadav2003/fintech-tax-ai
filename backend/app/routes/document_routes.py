@@ -16,7 +16,7 @@ from ..utils.dependencies import get_current_user
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 UPLOADS_DIR = Path("/app/uploads/documents")
 MAX_DOCUMENT_BYTES = 5 * 1024 * 1024
-ALLOWED_TYPES = {"form16", "bank_interest", "80c", "80d", "home_loan", "rent"}
+ALLOWED_TYPES = {"form16", "bank_interest", "80c", "80d", "home_loan", "rent", "other"}
 DOCUMENT_LABELS = {
     "form16": "Form 16",
     "bank_interest": "Bank interest certificates",
@@ -24,7 +24,51 @@ DOCUMENT_LABELS = {
     "80d": "80D health receipts",
     "home_loan": "Home loan certificate",
     "rent": "Rent receipts",
+    "other": "Other Documents",
 }
+
+CLASSIFICATION_HINTS = {
+    "form16": ("form 16", "form16", "salary certificate"),
+    "bank_interest": ("interest certificate", "interest earned", "fixed deposit"),
+    "80c": ("ppf", "elss", "lic premium", "section 80c", "80c"),
+    "80d": ("health insurance", "medical insurance", "section 80d", "80d"),
+    "home_loan": ("home loan", "housing loan", "section 24"),
+    "rent": ("rent receipt", "rent paid", "section 80gg"),
+}
+
+
+def _suggest_category(text: str) -> dict:
+    normalized = text.lower()
+    matches = [category for category, hints in CLASSIFICATION_HINTS.items() if any(hint in normalized for hint in hints)]
+    if len(matches) == 1:
+        category = matches[0]
+        return {"category": category, "label": DOCUMENT_LABELS[category], "confidence": "possible", "message": f"This looks like {DOCUMENT_LABELS[category]}. Please confirm before applying."}
+    return {"category": None, "label": None, "confidence": "unknown", "message": "Couldn't determine document type - please categorize manually or leave in Other Documents."}
+
+
+def _extract_pages(contents: bytes, filename: str) -> list[str]:
+    if not filename.lower().endswith(".pdf"):
+        return []
+    try:
+        from pypdf import PdfReader
+        import io
+        return [page.extract_text() or "" for page in PdfReader(io.BytesIO(contents)).pages]
+    except Exception:
+        return []
+
+
+def _section_suggestions(contents: bytes, filename: str) -> list[dict]:
+    pages = _extract_pages(contents, filename)
+    if len(pages) < 2:
+        return []
+    sections = []
+    for page_number, text in enumerate(pages, start=1):
+        suggestion = _suggest_category(text)
+        if not sections or suggestion["category"] != sections[-1]["suggested_category"]:
+            sections.append({"pages": [page_number], "suggested_category": suggestion["category"], "suggested_label": suggestion["label"], "message": suggestion["message"]})
+        else:
+            sections[-1]["pages"].append(page_number)
+    return sections if len(sections) > 1 else []
 
 
 def _extract_text(contents: bytes, filename: str) -> str:
@@ -99,17 +143,26 @@ async def upload_document(
     suffix = Path(file.filename or "document").suffix.lower()
     destination = UPLOADS_DIR / f"{current_user.id}_{uuid4().hex}{suffix}"
     destination.write_bytes(contents)
-    extracted = extract_values(document_type, _extract_text(contents, file.filename or ""))
-    document = Document(user_id=current_user.id, document_type=document_type, file_path=str(destination), original_filename=file.filename or "document", extracted_data=extracted)
+    text = _extract_text(contents, file.filename or "")
+    extracted = extract_values(document_type, text) if document_type != "other" else {}
+    metadata = {"reviewed": False, "classification": _suggest_category(text) if document_type == "other" else None, "sections": _section_suggestions(contents, file.filename or "")}
+    extracted_payload = {"values": extracted, "metadata": metadata}
+    document = Document(user_id=current_user.id, document_type=document_type, file_path=str(destination), original_filename=file.filename or "document", extracted_data=extracted_payload)
     db.add(document)
     db.commit()
     db.refresh(document)
-    return {"id": document.id, "document_type": document.document_type, "label": DOCUMENT_LABELS[document_type], "original_filename": document.original_filename, "extracted_data": extracted, "uploaded_at": document.uploaded_at.isoformat(), "extraction_note": "Values were suggested from PDF text or image OCR. Review every value before using it; extraction can miss or misread fields."}
+    return {"id": document.id, "document_type": document.document_type, "label": DOCUMENT_LABELS[document_type], "original_filename": document.original_filename, "extracted_data": extracted, "metadata": metadata, "uploaded_at": document.uploaded_at.isoformat(), "extraction_note": "Values were suggested from PDF text or image OCR. Review every value before using it; extraction can miss or misread fields."}
 
 
 @router.get("")
 def list_documents(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    return [{"id": item.id, "document_type": item.document_type, "label": DOCUMENT_LABELS.get(item.document_type, item.document_type), "original_filename": item.original_filename, "extracted_data": item.extracted_data or {}, "uploaded_at": item.uploaded_at.isoformat()} for item in db.query(Document).filter(Document.user_id == current_user.id).order_by(Document.uploaded_at.desc()).all()]
+    result = []
+    for item in db.query(Document).filter(Document.user_id == current_user.id).order_by(Document.uploaded_at.desc()).all():
+        payload = item.extracted_data or {}
+        values = payload.get("values", payload) if isinstance(payload, dict) else {}
+        metadata = payload.get("metadata", {}) if isinstance(payload, dict) else {}
+        result.append({"id": item.id, "document_type": item.document_type, "label": DOCUMENT_LABELS.get(item.document_type, item.document_type), "original_filename": item.original_filename, "extracted_data": values, "metadata": metadata, "uploaded_at": item.uploaded_at.isoformat()})
+    return result
 
 
 @router.get("/{document_id}/download")
