@@ -7,6 +7,17 @@ import LoadingSkeleton from './LoadingSkeleton';
 
 const OTHER_FIELDS = { donations_80g: 'Donation amount (possible 80G)', other_deductions: 'Other deduction amount' };
 
+export function combineConfirmedDocumentValues(documents, draftValues, confirmed) {
+  const values = {};
+  documents.forEach(item => {
+    if (!confirmed[item.id]) return;
+    Object.entries(draftValues[item.id] || {}).forEach(([key, value]) => {
+      if (value !== '' && value != null && Number.isFinite(Number(value))) values[key] = (values[key] || 0) + Number(value);
+    });
+  });
+  return values;
+}
+
 function Documents({ onApplyValues, reviewSeed }) {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,12 +41,7 @@ function Documents({ onApplyValues, reviewSeed }) {
   };
   const updateValue = (id, key, value) => setDraftValues(previous => ({ ...previous, [id]: { ...(previous[id] || {}), [key]: value } }));
   const apply = () => {
-    const values = {};
-    documents.forEach(item => {
-      if (!confirmed[item.id]) return;
-      Object.entries(draftValues[item.id] || {}).forEach(([key, value]) => { if (value !== '' && value != null && Number.isFinite(Number(value))) values[key] = (values[key] || 0) + Number(value); });
-    });
-    onApplyValues(values);
+    onApplyValues(combineConfirmedDocumentValues(documents, draftValues, confirmed));
   };
   const reviewableCount = documents.filter(item => Object.keys(draftValues[item.id] || {}).length).length;
   if (loading) return <section className="documents-page"><LoadingSkeleton lines={4} /></section>;

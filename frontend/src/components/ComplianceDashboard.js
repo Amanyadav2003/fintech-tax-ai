@@ -28,7 +28,7 @@ function ComplianceDashboard({ onBack, onNewAnalysis }) {
         setChecklistState(Object.fromEntries(checklist.map((item) => [item.id, item.completed])));
         setDocumentsState(
           Object.fromEntries(
-            documents.map((item) => [item.id, { uploaded: !!item.uploaded, verified: !!item.uploaded, fileName: '' }])
+            documents.map((item) => [item.id, { uploaded: !!item.uploaded, status: item.uploaded ? 'Pending Review' : 'Not uploaded', fileName: '' }])
           )
         );
         setError('');
@@ -69,19 +69,8 @@ function ComplianceDashboard({ onBack, onNewAnalysis }) {
       ...previous,
       [documentId]: {
         uploaded: !!file,
-        verified: false,
+        status: file ? 'Pending Review' : 'Not uploaded',
         fileName: file?.name || ''
-      }
-    }));
-  };
-
-  const handleVerifyDocument = (documentId) => {
-    setDocumentsState((previous) => ({
-      ...previous,
-      [documentId]: {
-        ...(previous[documentId] || {}),
-        uploaded: true,
-        verified: true
       }
     }));
   };
@@ -165,7 +154,7 @@ function ComplianceDashboard({ onBack, onNewAnalysis }) {
           </div>
           <div className="document-list">
             {documents.map((document) => {
-              const documentStatus = documentsState[document.id] || { uploaded: !!document.uploaded, verified: false, fileName: '' };
+              const documentStatus = documentsState[document.id] || { uploaded: !!document.uploaded, status: document.uploaded ? 'Pending Review' : 'Not uploaded', fileName: '' };
               return (
                 <div key={document.id} className="document-item">
                   <div className="document-info">
@@ -182,14 +171,7 @@ function ComplianceDashboard({ onBack, onNewAnalysis }) {
                     />
                     <div className="upload-state">
                       <span>{documentStatus.fileName || (documentStatus.uploaded ? 'Uploaded' : 'No file selected')}</span>
-                      <button
-                        type="button"
-                        className="verify-btn"
-                        onClick={() => handleVerifyDocument(document.id)}
-                        disabled={!documentStatus.uploaded}
-                      >
-                        {documentStatus.verified ? 'Verified' : 'Verify'}
-                      </button>
+                      <span className="verify-btn">{documentStatus.status}</span>
                     </div>
                   </div>
                 </div>

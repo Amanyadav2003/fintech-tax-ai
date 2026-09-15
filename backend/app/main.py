@@ -17,6 +17,7 @@ from .routes.auth_routes import router as auth_router
 from .routes.chat_history_routes import router as chat_history_router
 from .routes.expense_routes import router as expense_router
 from .routes.document_routes import router as document_router
+from .routes.support_routes import router as support_router
 from .utils.database import init_db
 from .utils.middleware import ErrorHandlingMiddleware, SecurityHeadersMiddleware, LoggingMiddleware, limiter
 from .utils.logging_config import setup_logging
@@ -107,6 +108,7 @@ app.include_router(tax_router)
 app.include_router(chat_history_router)
 app.include_router(expense_router)
 app.include_router(document_router)
+app.include_router(support_router)
 
 # Custom exception handler for validation errors
 @app.exception_handler(RequestValidationError)

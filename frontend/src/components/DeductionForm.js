@@ -13,6 +13,10 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 }
 };
 
+export function mergeDocumentValues(previous, documentValues) {
+  return { ...previous, ...documentValues };
+}
+
 function DeductionForm({ incomeData, onAnalysisComplete, userEmail, documentValues = {} }) {
   const [deductions, setDeductions] = useState({
     investments_80c: '',
@@ -25,7 +29,7 @@ function DeductionForm({ incomeData, onAnalysisComplete, userEmail, documentValu
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  useEffect(() => { if (Object.keys(documentValues).length) setDeductions(previous => ({ ...previous, ...documentValues })); }, [documentValues]);
+  useEffect(() => { if (Object.keys(documentValues).length) setDeductions(previous => mergeDocumentValues(previous, documentValues)); }, [documentValues]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

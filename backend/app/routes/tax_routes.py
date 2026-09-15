@@ -4,7 +4,7 @@ from typing import List
 import json
 from datetime import datetime
 
-from ..models import User, TaxFiling, AuditFlag, ChatHistory
+from ..models import User, TaxFiling, AuditFlag, ChatHistory, Document
 from ..schemas.tax_schemas import (
     UserCreate, UserResponse, TaxFilingCreate, TaxFilingResponse,
     TaxFilingAnalysis, IncomeData, DeductionsData,
@@ -490,12 +490,12 @@ def get_dashboard(
         if not latest_filing:
             return {
                 "message": "No filings found",
-                "compliance_dashboard": _build_default_compliance_dashboard(current_user)
+                "compliance_dashboard": _build_default_compliance_dashboard(current_user, db)
             }
 
         effective_tax_rate = (latest_filing.tax_old_regime / latest_filing.total_income * 100) if latest_filing.total_income > 0 else 0
         total_tax_liability = latest_filing.tax_new_regime if latest_filing.recommended_regime == "new" else latest_filing.tax_old_regime
-        compliance_dashboard = _build_compliance_dashboard(current_user, latest_filing)
+        compliance_dashboard = _build_compliance_dashboard(current_user, latest_filing, db)
 
         return {
             "user_id": current_user.id,
@@ -517,8 +517,13 @@ def get_dashboard(
         )
 
 
-def _build_default_compliance_dashboard(current_user: User) -> dict:
+def _document_types_for_user(db: Session, user_id: int) -> set[str]:
+    return {document.document_type for document in db.query(Document).filter(Document.user_id == user_id).all()}
+
+
+def _build_default_compliance_dashboard(current_user: User, db: Session) -> dict:
     """Build a default compliance dashboard for users without filings."""
+    document_types = _document_types_for_user(db, current_user.id)
 
     return {
         "filing_status": {
@@ -557,24 +562,25 @@ def _build_default_compliance_dashboard(current_user: User) -> dict:
         ],
         "checklist": [
             {"id": "personal_details", "label": "Verify PAN, Aadhaar, and bank details", "completed": bool(current_user.pan)},
-            {"id": "form16", "label": "Collect Form 16 / 16A", "completed": False},
+            {"id": "form16", "label": "Collect Form 16 / 16A", "completed": "form16" in document_types},
             {"id": "forms", "label": "Check Form 26AS, AIS, and TIS", "completed": False},
-            {"id": "proofs", "label": "Gather deduction proofs", "completed": False},
+            {"id": "proofs", "label": "Gather deduction proofs", "completed": bool(document_types & {"80c", "80d", "rent", "other"})},
             {"id": "verify", "label": "E-verify the return after filing", "completed": False},
         ],
         "documents": [
-            {"id": "form16", "name": "Form 16 / 16A", "required": True, "reason": "TDS reconciliation"},
-            {"id": "pan", "name": "PAN and Aadhaar", "required": True, "reason": "Identity verification"},
-            {"id": "bank", "name": "Bank account proof", "required": True, "reason": "Refund credit"},
-            {"id": "proofs", "name": "Deduction receipts", "required": False, "reason": "80C / 80D / 80G claims"},
-            {"id": "home_loan", "name": "Home loan interest certificate", "required": False, "reason": "House property deductions"},
-            {"id": "form26as", "name": "Form 26AS / AIS / TIS", "required": True, "reason": "Tax credit matching"},
+            {"id": "form16", "name": "Form 16 / 16A", "required": True, "reason": "TDS reconciliation", "uploaded": "form16" in document_types},
+            {"id": "pan", "name": "PAN and Aadhaar", "required": True, "reason": "Identity verification", "uploaded": False},
+            {"id": "bank", "name": "Bank account proof", "required": True, "reason": "Refund credit", "uploaded": False},
+            {"id": "proofs", "name": "Deduction receipts", "required": False, "reason": "80C / 80D / 80G claims", "uploaded": bool(document_types & {"80c", "80d", "rent", "other"})},
+            {"id": "home_loan", "name": "Home loan interest certificate", "required": False, "reason": "House property deductions", "uploaded": "home_loan" in document_types},
+            {"id": "form26as", "name": "Form 26AS / AIS / TIS", "required": True, "reason": "Tax credit matching", "uploaded": False},
         ],
     }
 
 
-def _build_compliance_dashboard(current_user: User, latest_filing: TaxFiling) -> dict:
+def _build_compliance_dashboard(current_user: User, latest_filing: TaxFiling, db: Session) -> dict:
     """Build a compliance dashboard from the latest filing data."""
+    document_types = _document_types_for_user(db, current_user.id)
 
     status = (latest_filing.status or "draft").lower()
 
@@ -619,31 +625,31 @@ def _build_compliance_dashboard(current_user: User, latest_filing: TaxFiling) ->
         {
             "id": "form16",
             "label": "Collect Form 16 / 16A",
-            "completed": latest_filing.tds_paid > 0,
+            "completed": "form16" in document_types,
             "detail": "Use it to verify salary TDS and interest TDS.",
         },
         {
             "id": "forms",
             "label": "Cross-check Form 26AS, AIS, and TIS",
-            "completed": latest_filing.total_income > 0,
+            "completed": False,
             "detail": "Reconcile all reported tax credits before filing.",
         },
         {
             "id": "proofs_80c",
             "label": "Upload 80C investment proofs",
-            "completed": latest_filing.investments_80c > 0,
+            "completed": "80c" in document_types,
             "detail": "PPF, ELSS, LIC, EPF, and tuition fee receipts.",
         },
         {
             "id": "proofs_80d",
             "label": "Upload 80D health insurance receipts",
-            "completed": latest_filing.health_insurance_80d > 0,
+            "completed": "80d" in document_types,
             "detail": "Premium receipts for self, family, and parents.",
         },
         {
             "id": "home_loan",
             "label": "Upload home loan interest certificate",
-            "completed": latest_filing.home_loan_interest_80emi > 0,
+            "completed": "home_loan" in document_types,
             "detail": "Needed for Section 24(b) claims.",
         },
         {
@@ -660,35 +666,35 @@ def _build_compliance_dashboard(current_user: User, latest_filing: TaxFiling) ->
             "name": "Form 16 / 16A",
             "required": True,
             "reason": "TDS reconciliation",
-            "uploaded": latest_filing.tds_paid > 0,
+            "uploaded": "form16" in document_types,
         },
         {
             "id": "bank",
             "name": "Bank account proof",
             "required": True,
             "reason": "Refund credit",
-            "uploaded": filing_stage == "filed",
+            "uploaded": False,
         },
         {
             "id": "proofs",
             "name": "Deduction receipts",
             "required": False,
             "reason": "80C / 80D / 80G claims",
-            "uploaded": latest_filing.total_deductions > 0,
+            "uploaded": bool(document_types & {"80c", "80d", "rent", "other"}),
         },
         {
             "id": "home_loan",
             "name": "Home loan certificate",
             "required": False,
             "reason": "House property deduction",
-            "uploaded": latest_filing.home_loan_interest_80emi > 0,
+            "uploaded": "home_loan" in document_types,
         },
         {
             "id": "form26as",
             "name": "Form 26AS / AIS / TIS",
             "required": True,
             "reason": "Tax credit matching",
-            "uploaded": latest_filing.total_income > 0,
+            "uploaded": False,
         },
     ]
 

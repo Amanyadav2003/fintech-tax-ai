@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, JSON, DateTime, Boolean
+from sqlalchemy import Column, Integer, String, Float, JSON, DateTime, Boolean, ForeignKey, Text
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 
@@ -169,3 +169,28 @@ class ChatHistory(Base):
     
     def __repr__(self):
         return f"<ChatHistory(user_id={self.user_id}, mode={self.operating_mode}, module={self.tax_module})>"
+
+
+class SupportTicket(Base):
+    __tablename__ = "support_tickets"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ticket_code = Column(String, unique=True, index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    subject = Column(String(160), nullable=False)
+    description = Column(Text, nullable=False)
+    category = Column(String(60), nullable=False)
+    status = Column(String(20), nullable=False, default="Open")
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
+class SupportMessage(Base):
+    __tablename__ = "support_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ticket_id = Column(Integer, ForeignKey("support_tickets.id"), index=True, nullable=False)
+    sender_user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    sender_type = Column(String(20), nullable=False)
+    message = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
