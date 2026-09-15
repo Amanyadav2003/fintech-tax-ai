@@ -135,8 +135,13 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
       setOtp('');
       setRegistrationSuccess(response.data.message || 'Email verified ✓');
     } catch (err) {
+      setRegistrationOtpPending(true);
+      setRegistrationOtpVerified(false);
+      setEmailVerified(false);
       setOtp('');
-      setError(getDetailedErrorMessage(err));
+      setError(err.response?.status === 400 && err.response?.data?.detail === 'Incorrect OTP'
+        ? 'Incorrect OTP. Please enter the correct OTP and try again.'
+        : getDetailedErrorMessage(err));
     } finally {
       setLoading(false);
     }
