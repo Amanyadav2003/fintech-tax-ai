@@ -32,10 +32,11 @@ resend_attempts = {}
 pending_registrations = {}
 resend_attempts_lock = threading.Lock()
 
-SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true" or os.getenv("ENVIRONMENT", "development").lower() == "production"
+IS_PRODUCTION = os.getenv("ENVIRONMENT", "development").lower() == "production"
+SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true" or IS_PRODUCTION
 SESSION_COOKIE_HTTPONLY = os.getenv("SESSION_COOKIE_HTTPONLY", "true").lower() == "true"
 SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE", "Lax")
-if os.getenv("ENVIRONMENT", "development").lower() == "production":
+if IS_PRODUCTION:
     SESSION_COOKIE_SAMESITE = "None"
 
 
@@ -64,6 +65,8 @@ def _issue_tokens(user: User) -> JSONResponse:
         "token_type": "bearer",
         "expires_in": 86400,
         "message": "Login successful",
+        "id": user.id,
+        "email": user.email,
         "user": {"id": user.id, "email": user.email, "name": user.name}
     })
     response.set_cookie("access_token", access_token, httponly=SESSION_COOKIE_HTTPONLY, secure=SESSION_COOKIE_SECURE,
@@ -193,10 +196,7 @@ def register(request: Request, user_data: UserRegister, db: Session = Depends(ge
         db.refresh(db_user)
 
         logger.info(f"User registered successfully: {normalized_email}")
-        return RegistrationResponse(
-            email=db_user.email,
-            message="Registration successful."
-        )
+        return _issue_tokens(db_user)
     except Exception as e:
         db.rollback()
         logger.error(f"Registration error: {str(e)}")

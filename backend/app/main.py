@@ -10,6 +10,8 @@ from dotenv import load_dotenv
 import sentry_sdk
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 
+load_dotenv()
+
 from .routes.tax_routes import router as tax_router
 from .routes.auth_routes import router as auth_router
 from .routes.chat_history_routes import router as chat_history_router
@@ -18,9 +20,6 @@ from .routes.document_routes import router as document_router
 from .utils.database import init_db
 from .utils.middleware import ErrorHandlingMiddleware, SecurityHeadersMiddleware, LoggingMiddleware, limiter
 from .utils.logging_config import setup_logging
-
-# Load environment variables
-load_dotenv()
 
 # Setup logging
 logger = setup_logging()
