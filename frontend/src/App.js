@@ -54,6 +54,8 @@ function App() {
   const [userEmail, setUserEmail] = useState(null);
   const [user, setUser] = useState(null);
   const [authInitializing, setAuthInitializing] = useState(true);
+  const [authInitializationMessage, setAuthInitializationMessage] = useState('Loading Intelligent Engine...');
+  const [authInitializationError, setAuthInitializationError] = useState('');
   const [chatOpen, setChatOpen] = useState(false);
   const [documentValues, setDocumentValues] = useState({});
   const [documentReviewSeed, setDocumentReviewSeed] = useState(null);
@@ -141,12 +143,20 @@ function App() {
   useEffect(() => {
     const checkAuth = async () => {
       setAuthInitialization(true);
+      setAuthInitializationMessage('Loading Intelligent Engine...');
+      setAuthInitializationError('');
+      const slowStartTimer = window.setTimeout(() => {
+        setAuthInitializationMessage('Waking up the secure service. This may take a few seconds...');
+      }, 3000);
       try {
         let profileResponse;
         try {
           await api.post('auth/refresh');
           profileResponse = await api.get('auth/me');
         } catch (refreshError) {
+          if (refreshError.code === 'ECONNABORTED' || refreshError.code === 'ETIMEDOUT') {
+            throw refreshError;
+          }
           // A valid bearer token can restore the session if refresh is temporarily unavailable.
           profileResponse = await api.get('auth/me');
         }
@@ -159,8 +169,12 @@ function App() {
           navigateToStep('landing', { replace: true });
         }
       } catch (err) {
+        if (err.code === 'ECONNABORTED' || err.code === 'ETIMEDOUT') {
+          setAuthInitializationError('The secure service is taking too long to respond. Please try again.');
+        }
         navigateToStep('landing', { replace: true });
       } finally {
+        window.clearTimeout(slowStartTimer);
         setAuthInitialization(false);
         setAuthInitializing(false);
       }
@@ -282,7 +296,7 @@ function App() {
     return (
       <div className="loading-container">
         <div className="loading-spinner"></div>
-        <p>Loading Intelligent Engine...</p>
+        <p>{authInitializationMessage}</p>
       </div>
     );
   }
@@ -290,6 +304,7 @@ function App() {
   if (currentStep === 'landing') {
     return (
       <AppBackground variant="vibrant">
+        {authInitializationError && <div className="session-toast expired" role="alert">{authInitializationError}</div>}
         <LandingPage onGetStarted={handleGetStarted} />
         {userEmail && <ChatWidget chatOpen={chatOpen} setChatOpen={setChatOpen} analysis={analysis} />}
       </AppBackground>
