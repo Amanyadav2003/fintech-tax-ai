@@ -258,7 +258,9 @@ function App() {
 
   const handleLogout = async () => {
     try { await api.post('auth/logout'); } catch (err) { /* local sign-out still clears the session */ }
+    sessionStorage.removeItem('access_token');
     sessionStorage.removeItem('user_email');
+    sessionStorage.removeItem('pending_verification_email');
     setUserEmail(null);
     navigateToStep('auth');
     setIncome(null);
