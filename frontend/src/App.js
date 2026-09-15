@@ -18,7 +18,7 @@ import ExpenseTracker from './components/ExpenseTracker';
 import Documents from './components/Documents';
 import Changelog from './components/Changelog';
 import ResourceRoute, { ResourcesMenu } from './components/Resources';
-import api from './services/api';
+import api, { setAuthInitialization } from './services/api';
 import AppBackground from './components/AppBackground';
 import { AlertTriangle, MessageCircle, X } from 'lucide-react';
 import { isUpdateUnread, UPDATE_READ_EVENT } from './data/updates';
@@ -47,13 +47,13 @@ const pageTransition = {
 const protectedSteps = ['home', 'income-type', 'income', 'deductions', 'results', 'history', 'expenses', 'dashboard', 'profile', 'documents'];
 
 function App() {
-  const [currentStep, setCurrentStep] = useState('landing'); // landing, auth, verify, home, income-type, income, deductions, results, history
+  const [currentStep, setCurrentStep] = useState(() => window.history.state?.taxmateStep || 'landing'); // landing, auth, verify, home, income-type, income, deductions, results, history
   const [income, setIncome] = useState(null);
   const [incomeType, setIncomeType] = useState(null);
   const [analysis, setAnalysis] = useState(null);
   const [userEmail, setUserEmail] = useState(null);
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [authInitializing, setAuthInitializing] = useState(true);
   const [chatOpen, setChatOpen] = useState(false);
   const [documentValues, setDocumentValues] = useState({});
   const [documentReviewSeed, setDocumentReviewSeed] = useState(null);
@@ -64,10 +64,26 @@ function App() {
     return saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
 
+  const navigateToStep = (step, { replace = false } = {}) => {
+    const historyMethod = replace ? 'replaceState' : 'pushState';
+    if (window.history.state?.taxmateStep !== step) {
+      window.history[historyMethod]({ ...window.history.state, taxmateStep: step }, '', window.location.href);
+    }
+    setCurrentStep(step);
+  };
+
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
     localStorage.setItem('taxmate-theme', darkMode ? 'dark' : 'light');
   }, [darkMode]);
+
+  useEffect(() => {
+    const handlePopState = (event) => {
+      setCurrentStep(event.state?.taxmateStep || 'landing');
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   useEffect(() => {
     const decodeExpiry = () => {
@@ -124,56 +140,69 @@ function App() {
 
   useEffect(() => {
     const checkAuth = async () => {
+      setAuthInitialization(true);
       try {
-        await api.post('auth/refresh');
-        const profileResponse = await api.get('auth/me');
+        let profileResponse;
+        try {
+          await api.post('auth/refresh');
+          profileResponse = await api.get('auth/me');
+        } catch (refreshError) {
+          // A valid bearer token can restore the session if refresh is temporarily unavailable.
+          profileResponse = await api.get('auth/me');
+        }
         const profile = profileResponse.data;
         if (profile.email) {
           setUser(profile);
           setUserEmail(profile.email);
-          setCurrentStep('home');
+          navigateToStep('home', { replace: true });
         } else {
-          setCurrentStep('landing');
+          navigateToStep('landing', { replace: true });
         }
       } catch (err) {
-        setCurrentStep('landing');
+        navigateToStep('landing', { replace: true });
       } finally {
-        setLoading(false);
+        setAuthInitialization(false);
+        setAuthInitializing(false);
       }
     };
-    
+
     checkAuth();
   }, []);
 
   useEffect(() => {
-    if (!userEmail && protectedSteps.includes(currentStep)) setCurrentStep('auth');
-  }, [currentStep, userEmail]);
+    if (!authInitializing && !userEmail && protectedSteps.includes(currentStep)) navigateToStep('auth');
+  }, [authInitializing, currentStep, userEmail]);
 
   const handleGetStarted = () => {
-    setCurrentStep('auth');
+    navigateToStep('auth');
   };
 
-  const handleUserCreated = (email) => {
-    setUserEmail(email);
-    sessionStorage.setItem('user_email', email);
-    setCurrentStep('home');
-    api.get('auth/me').then(response => setUser(response.data)).catch(() => {});
+  const handleUserCreated = async (email) => {
+    try {
+      const response = await api.get('auth/me');
+      setUser(response.data);
+      setUserEmail(email);
+      sessionStorage.setItem('user_email', email);
+      navigateToStep('home');
+    } catch (error) {
+      setSessionNotice('Authentication succeeded, but your profile could not be loaded.');
+    }
   };
 
   const handleVerificationPending = (email) => {
     setUserEmail(null);
-    setCurrentStep('verify');
+    navigateToStep('verify');
     sessionStorage.setItem('pending_verification_email', email);
   };
 
   const handleIncomeSubmitted = (incomeData) => {
     setIncome(incomeData);
-    setCurrentStep('deductions');
+    navigateToStep('deductions');
   };
 
   const handleIncomeTypeSelected = (selectedType) => {
     setIncomeType(selectedType);
-    setCurrentStep('income');
+    navigateToStep('income');
   };
 
   const handleViewResult = async (filingId) => {
@@ -205,19 +234,19 @@ function App() {
       risk_analysis: { audit_risk_score: riskOutput.overall_audit_risk_score || 0, risk_level: riskOutput.risk_level || 'GREEN', flags: (riskOutput.audit_flags || []).map(flag => flag.reason), penalty_if_audited: 0 },
       strategy_analysis: { financial_health_score: strategyOutput.financial_health_score || 0, missed_opportunities: [], recommended_actions: (strategyOutput.next_actions || []).map(action => action.action || action) },
     });
-    setCurrentStep('results');
+    navigateToStep('results');
   };
 
   const handleAnalyzeComplete = (analysisData) => {
     setAnalysis(analysisData);
-    setCurrentStep('results');
+    navigateToStep('results');
   };
 
   const handleLogout = async () => {
     try { await api.post('auth/logout'); } catch (err) { /* local sign-out still clears the session */ }
     sessionStorage.removeItem('user_email');
     setUserEmail(null);
-    setCurrentStep('auth');
+    navigateToStep('auth');
     setIncome(null);
     setAnalysis(null);
     setUser(null);
@@ -227,29 +256,29 @@ function App() {
     setIncome(null);
     setAnalysis(null);
     setIncomeType(null);
-    setCurrentStep('income-type');
+    navigateToStep('income-type');
   };
 
   const handleApplyDocumentValues = (values) => {
     setDocumentValues(values);
     const deductionKeys = ['investments_80c', 'health_insurance_80d', 'home_loan_interest_24b', 'rent_paid_80gg', 'donations_80g', 'other_deductions'];
-    setCurrentStep(Object.keys(values).some(key => deductionKeys.includes(key)) ? 'deductions' : 'income');
+    navigateToStep(Object.keys(values).some(key => deductionKeys.includes(key)) ? 'deductions' : 'income');
   };
 
   const handleOpenDashboard = () => {
-    setCurrentStep('dashboard');
+    navigateToStep('dashboard');
   };
 
   const handleOpenDocuments = (seed = null) => {
     setDocumentReviewSeed(seed);
-    setCurrentStep('documents');
+    navigateToStep('documents');
   };
 
   const handleBackToResults = () => {
-    setCurrentStep(analysis ? 'results' : 'income-type');
+    navigateToStep(analysis ? 'results' : 'income-type');
   };
 
-  if (loading) {
+  if (authInitializing) {
     return (
       <div className="loading-container">
         <div className="loading-spinner"></div>
@@ -287,11 +316,11 @@ function App() {
       case 'results':
         return <Results analysis={analysis} />;
       case 'home':
-        return <Home user={user || { email: userEmail }} onStart={() => setCurrentStep('income-type')} onHistory={() => setCurrentStep('history')} onViewResult={handleViewResult} onOpenDocuments={handleOpenDocuments} />;
+        return <Home user={user || { email: userEmail }} onStart={() => navigateToStep('income-type')} onHistory={() => navigateToStep('history')} onViewResult={handleViewResult} onOpenDocuments={handleOpenDocuments} />;
       case 'history':
-        return <History onBack={() => setCurrentStep('home')} onViewResult={handleViewResult} />;
+        return <History onBack={() => navigateToStep('home')} onViewResult={handleViewResult} />;
       case 'expenses':
-        return <ExpenseTracker onBack={() => setCurrentStep('home')} />;
+        return <ExpenseTracker onBack={() => navigateToStep('home')} />;
       case 'dashboard':
         return <ComplianceDashboard onBack={handleBackToResults} onNewAnalysis={handleNewAnalysis} />;
       case 'profile':
@@ -299,7 +328,7 @@ function App() {
       case 'documents':
         return <Documents onApplyValues={handleApplyDocumentValues} reviewSeed={documentReviewSeed} />;
       case 'changelog':
-        return <Changelog onBack={() => setCurrentStep(userEmail ? 'home' : 'auth')} />;
+        return <Changelog onBack={() => navigateToStep(userEmail ? 'home' : 'auth')} />;
       case 'resource-income-tax':
       case 'resource-hra':
       case 'resource-advance-tax':
@@ -319,15 +348,15 @@ function App() {
   return (
     <AppBackground variant="subtle">
       <div className="App">
-      {sessionNotice && <div className={`session-toast ${sessionNotice}`} role="alert"><AlertTriangle size={18} /><span>{sessionNotice === 'warning' ? 'Your session will expire soon due to inactivity — click anywhere to stay logged in.' : 'Your session expired, please log in again.'}</span>{sessionNotice === 'warning' ? <button className="session-toast-close" onClick={stayLoggedIn} aria-label="Stay logged in">Stay logged in</button> : <button className="session-toast-close" onClick={() => { setSessionNotice(''); setCurrentStep('auth'); }} aria-label="Dismiss session expired message"><X size={17} /></button>}</div>}
+      {sessionNotice && <div className={`session-toast ${sessionNotice}`} role="alert"><AlertTriangle size={18} /><span>{sessionNotice === 'warning' ? 'Your session will expire soon due to inactivity — click anywhere to stay logged in.' : 'Your session expired, please log in again.'}</span>{sessionNotice === 'warning' ? <button className="session-toast-close" onClick={stayLoggedIn} aria-label="Stay logged in">Stay logged in</button> : <button className="session-toast-close" onClick={() => { setSessionNotice(''); navigateToStep('auth'); }} aria-label="Dismiss session expired message"><X size={17} /></button>}</div>}
       <header className="app-header">
         <div className="header-content">
-          <button className="logo" onClick={() => userEmail && setCurrentStep('home')} aria-label="Go to Home">
+          <button className="logo" onClick={() => userEmail && navigateToStep('home')} aria-label="Go to Home">
             TAXMATE AI
           </button>
-          <nav className="top-nav" aria-label="Primary navigation"><button onClick={() => setCurrentStep('home')}>Home</button><ResourcesMenu onNavigate={setCurrentStep} hasUnreadUpdate={hasUnreadUpdate} /><span>{currentPageName}</span></nav>
+          <nav className="top-nav" aria-label="Primary navigation"><button onClick={() => navigateToStep('home')}>Home</button><ResourcesMenu onNavigate={navigateToStep} hasUnreadUpdate={hasUnreadUpdate} /><span>{currentPageName}</span></nav>
           <div className="user-info">
-            {userEmail && user && <ProfileMenu user={user} onProfile={() => setCurrentStep('profile')} onDashboard={handleOpenDashboard} onHistory={() => setCurrentStep('history')} onExpenses={() => setCurrentStep('expenses')} onDocuments={() => setCurrentStep('documents')} onLogout={handleLogout} darkMode={darkMode} onToggleDarkMode={() => setDarkMode(previous => !previous)} />}
+            {userEmail && user && <ProfileMenu user={user} onProfile={() => navigateToStep('profile')} onDashboard={handleOpenDashboard} onHistory={() => navigateToStep('history')} onExpenses={() => navigateToStep('expenses')} onDocuments={() => navigateToStep('documents')} onLogout={handleLogout} darkMode={darkMode} onToggleDarkMode={() => setDarkMode(previous => !previous)} />}
             {currentStep === 'dashboard' && (
               <button onClick={handleBackToResults} className="new-analysis-btn">Back</button>
             )}

@@ -1,6 +1,8 @@
 import axios from 'axios';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+let authInitializationInProgress = true;
+let refreshPromise = null;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -9,6 +11,19 @@ const api = axios.create({
   },
   withCredentials: true,  // Enable automatic cookie sending (HttpOnly cookies)
 });
+
+export const setAuthInitialization = (inProgress) => {
+  authInitializationInProgress = inProgress;
+};
+
+const refreshAccessToken = () => {
+  if (!refreshPromise) {
+    refreshPromise = api.post('auth/refresh').finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
+};
 
 // Add token to requests if available
 api.interceptors.request.use(
@@ -33,15 +48,15 @@ api.interceptors.response.use(
   },
   async (error) => {
     const originalRequest = error.config;
-    const isAuthRoute = originalRequest.url.includes('auth/login') || originalRequest.url.includes('auth/refresh') || originalRequest.url.includes('auth/register') || originalRequest.url.includes('auth/verify-otp') || originalRequest.url.includes('auth/resend-otp') || originalRequest.url.includes('auth/send-registration-otp') || originalRequest.url.includes('auth/verify-registration-otp');
+    const requestUrl = originalRequest?.url || '';
+    const isAuthRoute = requestUrl.includes('auth/login') || requestUrl.includes('auth/refresh') || requestUrl.includes('auth/register') || requestUrl.includes('auth/me') || requestUrl.includes('auth/verify-otp') || requestUrl.includes('auth/resend-otp') || requestUrl.includes('auth/send-registration-otp') || requestUrl.includes('auth/verify-registration-otp');
 
-    if (error.response?.status === 401 && !originalRequest._retry && !isAuthRoute) {
+    if (error.response?.status === 401 && !originalRequest?._retry && !isAuthRoute) {
+      if (authInitializationInProgress) return Promise.reject(error);
       originalRequest._retry = true;
 
       try {
-        // Token refresh is automatic - just call the endpoint
-        // The new access token will be set as an HttpOnly cookie by the backend
-        const refreshResponse = await api.post('auth/refresh');
+        const refreshResponse = await refreshAccessToken();
         if (refreshResponse.data.access_token) {
           sessionStorage.setItem('access_token', refreshResponse.data.access_token);
         }
@@ -49,7 +64,7 @@ api.interceptors.response.use(
         // Retry original request with new token
         return api(originalRequest);
       } catch (refreshError) {
-        // Refresh failed, redirect to login if not already there
+        // Both the original request and the shared refresh request failed.
         sessionStorage.removeItem('access_token');
         window.dispatchEvent(new Event('taxmate:session-expired'));
         if (window.location.pathname !== '/') {
