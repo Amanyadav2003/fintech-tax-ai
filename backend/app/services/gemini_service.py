@@ -34,7 +34,7 @@ Then list the missing details needed for an exact estimate. Do not invent curren
 MAX_HISTORY_MESSAGES = 8
 DEFAULT_MODEL = "gemini-3.6-flash"
 DEFAULT_TIMEOUT_MS = 30000
-DEFAULT_MAX_OUTPUT_TOKENS = 1200
+DEFAULT_MAX_OUTPUT_TOKENS = 2048
 
 
 class GeminiServiceError(Exception):
@@ -178,18 +178,19 @@ class GeminiService:
                 raise GeminiServiceError("generic_response")
             finish_reason = self._finish_reason(response)
             usage_tokens = self._usage_tokens(response)
-            if finish_reason and any(finish_reason.endswith(value) for value in ("MAX_TOKENS", "LENGTH")):
+            if finish_reason and any(finish_reason.endswith(value) for value in ("SAFETY", "BLOCKLIST", "PROHIBITED_CONTENT")):
                 raise GeminiServiceError(
-                    "max_output_tokens",
+                    "blocked_response",
                     detail=f"finish_reason={finish_reason}",
                 )
             logger.info(
                 "Gemini request succeeded: request_id=%s model=%s finish_reason=%s "
-                "response_chars=%d output_tokens=%s latency_ms=%d",
+                "response_chars=%d usable_text=%s output_tokens=%s latency_ms=%d",
                 request_id or "unknown",
                 model,
                 finish_reason or "unknown",
                 len(text),
+                True,
                 usage_tokens if usage_tokens is not None else "unknown",
                 round((time.perf_counter() - started_at) * 1000),
             )
@@ -197,13 +198,15 @@ class GeminiService:
         except GeminiServiceError as exc:
             logger.warning(
                 "Gemini response failure: request_id=%s model=%s reason=%s "
-                "exception_type=%s api_status=%s detail=%s latency_ms=%d",
+                "exception_type=%s api_status=%s detail=%s usable_text=%s "
+                "latency_ms=%d",
                 request_id or "unknown",
                 model,
                 exc.reason,
                 type(exc).__name__,
                 exc.status_code,
                 exc.detail or "none",
+                False,
                 round((time.perf_counter() - started_at) * 1000),
             )
             raise
@@ -212,13 +215,15 @@ class GeminiService:
             detail = self._safe_error_detail(exc)
             logger.warning(
                 "Gemini request failed: request_id=%s model=%s reason=%s "
-                "exception_type=%s api_status=%s detail=%s latency_ms=%d",
+                "exception_type=%s api_status=%s detail=%s usable_text=%s "
+                "latency_ms=%d",
                 request_id or "unknown",
                 model,
                 reason,
                 type(exc).__name__,
                 self._status_code(exc),
                 detail,
+                False,
                 round((time.perf_counter() - started_at) * 1000),
             )
             raise GeminiServiceError(reason, self._status_code(exc), detail) from exc
@@ -226,22 +231,41 @@ class GeminiService:
     @classmethod
     def _extract_response_text(cls, response) -> str:
         """Extract text while distinguishing malformed or blocked responses."""
+        text_error = None
         try:
             text = (getattr(response, "text", None) or "").strip()
         except Exception as exc:
-            raise GeminiServiceError(
-                "response_parse_error",
-                cls._status_code(exc),
-                cls._safe_error_detail(exc),
-            ) from exc
+            text = ""
+            text_error = exc
         if text:
             return text
 
         candidates = getattr(response, "candidates", None) or []
+        candidate_text = []
+        for candidate in candidates:
+            content = getattr(candidate, "content", None)
+            for part in getattr(content, "parts", None) or []:
+                part_text = getattr(part, "text", None)
+                if part_text:
+                    candidate_text.append(str(part_text))
+        if candidate_text:
+            return "\n".join(candidate_text).strip()
+
         finish_reasons = [
             str(getattr(candidate, "finish_reason", "unknown"))
             for candidate in candidates
         ]
+        if any(reason.upper().endswith(value) for reason in finish_reasons for value in ("SAFETY", "BLOCKLIST", "PROHIBITED_CONTENT")):
+            raise GeminiServiceError(
+                "blocked_response",
+                detail="no_usable_text; finish_reasons=" + ",".join(finish_reasons),
+            )
+        if text_error:
+            raise GeminiServiceError(
+                "response_parse_error",
+                cls._status_code(text_error),
+                cls._safe_error_detail(text_error),
+            ) from text_error
         detail = "no_text; finish_reasons=" + ",".join(finish_reasons or ["none"])
         raise GeminiServiceError("empty_response", detail=detail)
 

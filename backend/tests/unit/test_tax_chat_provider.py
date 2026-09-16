@@ -156,7 +156,7 @@ def test_gemini_environment_defaults_are_bounded(monkeypatch):
     diagnostics = GeminiService().diagnostics()
 
     assert diagnostics["timeout_ms"] == 30000
-    assert diagnostics["max_output_tokens"] == 1200
+    assert diagnostics["max_output_tokens"] == 2048
 
 
 def test_gemini_invalid_environment_values_use_defaults(monkeypatch):
@@ -169,7 +169,7 @@ def test_gemini_invalid_environment_values_use_defaults(monkeypatch):
     assert diagnostics["max_output_tokens"] == 128
 
 
-def test_gemini_max_tokens_response_is_rejected(monkeypatch):
+def test_gemini_max_tokens_response_with_text_is_returned(monkeypatch):
     class Candidate:
         finish_reason = "FinishReason.MAX_TOKENS"
 
@@ -184,9 +184,88 @@ def test_gemini_max_tokens_response_is_rejected(monkeypatch):
     service._get_client = lambda: Client()
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     try:
-        service.generate_response("Calculate tax for salary of 8 lakh")
+        response = service.generate_response("Calculate tax for salary of 8 lakh")
     except GeminiServiceError as error:
-        assert error.reason == "max_output_tokens"
-        assert "MAX_TOKENS" in error.detail
+        raise AssertionError(f"usable MAX_TOKENS response should not fail: {error.reason}")
     else:
-        raise AssertionError("expected truncated response error")
+        assert response == "partial answer"
+
+
+def test_gemini_stop_response_is_returned(monkeypatch):
+    class Models:
+        def generate_content(self, **kwargs):
+            return type("Response", (), {"text": "complete answer", "candidates": [type("Candidate", (), {"finish_reason": "STOP"})()]})()
+
+    class Client:
+        models = Models()
+
+    service = GeminiService()
+    service._get_client = lambda: Client()
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+
+    assert service.generate_response("What is TDS?") == "complete answer"
+
+
+def test_gemini_candidate_parts_are_used_when_response_text_is_empty(monkeypatch):
+    class Part:
+        text = "candidate answer"
+
+    class Content:
+        parts = [Part()]
+
+    class Candidate:
+        content = Content()
+        finish_reason = "MAX_TOKENS"
+
+    class Models:
+        def generate_content(self, **kwargs):
+            return type("Response", (), {"text": "", "candidates": [Candidate()]})()
+
+    class Client:
+        models = Models()
+
+    service = GeminiService()
+    service._get_client = lambda: Client()
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+
+    assert service.generate_response("What is TDS?") == "candidate answer"
+
+
+def test_gemini_max_tokens_without_text_uses_fallback(monkeypatch):
+    class Models:
+        def generate_content(self, **kwargs):
+            return type("Response", (), {"text": "", "candidates": [type("Candidate", (), {"finish_reason": "MAX_TOKENS"})()]})()
+
+    class Client:
+        models = Models()
+
+    service = GeminiService()
+    service._get_client = lambda: Client()
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+
+    try:
+        service.generate_response("What is TDS?")
+    except GeminiServiceError as error:
+        assert error.reason == "empty_response"
+    else:
+        raise AssertionError("expected empty response error")
+
+
+def test_gemini_blocked_response_uses_fallback(monkeypatch):
+    class Models:
+        def generate_content(self, **kwargs):
+            return type("Response", (), {"text": "", "candidates": [type("Candidate", (), {"finish_reason": "SAFETY"})()]})()
+
+    class Client:
+        models = Models()
+
+    service = GeminiService()
+    service._get_client = lambda: Client()
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+
+    try:
+        service.generate_response("What is TDS?")
+    except GeminiServiceError as error:
+        assert error.reason == "blocked_response"
+    else:
+        raise AssertionError("expected blocked response error")
