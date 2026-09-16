@@ -663,35 +663,6 @@ class EnhancedChatAgent:
         """Handle high-confidence app and safety intents before broad keyword matching."""
         query_lower = self._normalize_text(query)
 
-        if (
-            any(term in query_lower for term in ["annual salary", "salary 8 lakh", "salary of 8 lakh", "income tax kaise", "calculate my tax", "calculate tax"])
-            or (any(term in query_lower for term in ["salary", "salaried", "earning"]) and any(term in query_lower for term in ["deduction", "fixed deposit", "fd interest", "80c", "80d", "old regime", "new regime"]))
-        ):
-            return ("""**Illustrative estimate only: FY 2025-26 / AY 2026-27**
-
-**Assumptions:** Gross salary ₹8,00,000, salary is the only employment income, the ₹60,000 FD interest and ₹8,000 savings interest are taxable other income, and no HRA exemption or TDS adjustment is assumed. Confirm the FY/AY before relying on any figure.
-
-**Old Regime:**
-• Gross salary: ₹8,00,000
-• Standard deduction: ₹50,000 assumed
-• Section 80C: the ₹1,50,000 home-loan principal may qualify within the combined limit, subject to eligibility and documents
-• Section 80D: ₹25,000 health insurance may qualify subject to age, payment method and applicable conditions
-• FD interest ₹60,000 and savings interest ₹8,000 are generally included under Income from Other Sources
-• Section 80TTA may allow eligible savings interest relief, subject to its conditions and limit; Section 80TTB applies only to a resident senior citizen
-• Taxable income must include salary, other income, standard deduction and eligible claims; calculate the exact figure after confirming all conditions
-• Rebate under Section 87A: not assumed because taxable income is above the applicable threshold
-• Health and Education Cess: 4% applies to final tax where tax remains payable
-
-**New Regime:**
-• Gross salary: ₹8,00,000
-• Standard deduction: ₹75,000 assumed, subject to the applicable FY/AY rules
-• The home-loan principal, 80D claim and most Chapter VI-A deductions generally do not apply in the same way as under the Old Regime; verify current eligibility
-• FD and savings interest remain taxable other income
-• Taxable income and slab calculation depend on the applicable FY/AY and the current regime rules
-• Rebate under Section 87A may reduce the tax to nil if the applicable eligibility threshold is met; cess then does not create tax where the final tax is nil
-
-An exact result depends on the FY/AY, salary structure versus CTC, HRA and rent, home-loan documents, age, 80C/80D/NPS claims, other income and TDS. Verify current slabs, rebate eligibility and filing rules with the Income Tax Department or a qualified tax professional.""", "contextual")
-
         if "80c" in query_lower and ("80d" in query_lower or "difference" in query_lower):
             return ("**80C vs 80D**\n\n"
                     "1. **Section 80C** covers eligible investments and payments such as PPF, ELSS, EPF, life-insurance premiums and home-loan principal, subject to the combined annual limit.\n"
@@ -752,30 +723,6 @@ An exact result depends on the FY/AY, salary structure versus CTC, HRA and rent,
 • **HRA exemption:** May apply under the Old Regime when the employee receives HRA and pays qualifying rent, subject to the prescribed calculation and documents.
 
 The New Regime generally allows fewer deductions and exemptions than the Old Regime. To identify the correct claims, confirm the financial year or assessment year, regime, salary components, rent/HRA, home-loan interest, investments, insurance, other income and TDS. This is general information; verify the current rules with the Income Tax Department or a qualified tax professional."""
-
-            if (
-                any(term in query_lower for term in ["annual salary", "salary 8 lakh", "salary of 8 lakh", "income tax kaise", "calculate my tax", "calculate tax"])
-                or (any(term in query_lower for term in ["salary", "salaried", "earning"]) and any(term in query_lower for term in ["deduction", "fixed deposit", "fd interest", "80c", "80d", "old regime", "new regime"]))
-            ):
-                return """**Illustrative estimate only: FY 2025-26 / AY 2026-27**
-
-**Assumptions:** Gross salary ₹8,00,000, salary is the only income, no HRA exemption or other deductions, and no TDS adjustment. Confirm the FY/AY before relying on any figure.
-
-**Old Regime:**
-• Gross salary: ₹8,00,000
-• Standard deduction: ₹50,000 assumed
-• Taxable income: ₹7,50,000
-• Illustrative slab tax: ₹62,500 before cess
-• Rebate under Section 87A: not assumed because taxable income is above the applicable threshold
-• Health and Education Cess: 4%, making the illustration approximately ₹65,000
-
-**New Regime:**
-• Gross salary: ₹8,00,000
-• Standard deduction: ₹75,000 assumed, subject to the applicable FY/AY rules
-• Taxable income: ₹7,25,000
-• Rebate under Section 87A may reduce the tax to nil if the applicable eligibility threshold is met; cess then does not create tax where the final tax is nil
-
-An exact result depends on the FY/AY, salary structure versus CTC, HRA and rent, 80C/80D/NPS claims, home-loan interest, other income and TDS. Verify current slabs, rebate eligibility and filing rules with the Income Tax Department or a qualified tax professional."""
 
             # Handle old regime vs new regime questions
             if any(word in query_lower for word in ["old regime", "new regime", "regime comparison", "which regime"]):
