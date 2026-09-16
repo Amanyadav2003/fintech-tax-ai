@@ -16,3 +16,191 @@
   .fintech-button { @apply inline-flex items-center justify-center rounded-lg bg-navy-700 px-5 py-3 font-semibold text-white shadow-sm transition hover:bg-navy-900 focus:outline-none focus:ring-4 focus:ring-navy-100 disabled:cursor-not-allowed disabled:opacity-50; }
 }
 
+/* Keep legacy component styles and Tailwind surfaces coherent with the app theme. */
+html.dark .app-header {
+  background: rgba(17, 24, 39, .96);
+  border-color: var(--border-color);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .24);
+}
+
+html.dark .main-content,
+html.dark .AppBackground,
+html.dark main {
+  color: var(--text-secondary);
+}
+
+html.dark .bg-white,
+html.dark .bg-slate-50,
+html.dark .bg-slate-100,
+html.dark .fintech-card,
+html.dark .home-section,
+html.dark .history-row,
+html.dark .empty-history,
+html.dark .comparison-panel,
+html.dark .expense-card,
+html.dark .review-section,
+html.dark .result-card,
+html.dark .dashboard-card,
+html.dark .agent-visibility,
+html.dark .profile-card,
+html.dark .calculator-card,
+html.dark .document-panel,
+html.dark .support-panel {
+  background: var(--bg-card) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-secondary);
+}
+
+html.dark .bg-slate-50,
+html.dark .bg-slate-100,
+html.dark .need-card,
+html.dark .agent-cards > div,
+html.dark .reminder-item,
+html.dark .document-item,
+html.dark .checklist-item,
+html.dark .expense-card input,
+html.dark .expense-card select,
+html.dark .capital-section {
+  background: var(--bg-secondary) !important;
+  color: var(--text-secondary);
+}
+
+html.dark input,
+html.dark select,
+html.dark textarea {
+  background: var(--bg-secondary) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: var(--text-muted);
+}
+
+html.dark h1,
+html.dark h2,
+html.dark h3,
+html.dark h4,
+html.dark strong,
+html.dark label,
+html.dark dt,
+html.dark .card-title-row h2,
+html.dark .section-title h2,
+html.dark .home-heading h1,
+html.dark .history-page h1,
+html.dark .expense-heading h1,
+html.dark .documents-heading h1,
+html.dark .results-header h1,
+html.dark .profile-hero h1,
+html.dark .dashboard-hero h1 {
+  color: var(--text-primary);
+}
+
+html.dark p,
+html.dark span,
+html.dark li,
+html.dark dd,
+html.dark .hero-copy,
+html.dark .history-intro,
+html.dark .expense-heading p,
+html.dark .documents-heading p,
+html.dark .result-content p,
+html.dark .result-content li,
+html.dark .home-heading p,
+html.dark .profile-email,
+html.dark .member-since {
+  color: var(--text-secondary);
+}
+
+html.dark .eyebrow,
+html.dark .top-nav span,
+html.dark .loading-container p,
+html.dark .section-title > span,
+html.dark .comparison-hint,
+html.dark .agent-cards span,
+html.dark .expense-total span,
+html.dark .expense-bar-row span {
+  color: var(--text-muted);
+}
+
+html.dark button.primary-action,
+html.dark button.fintech-button,
+html.dark .new-analysis-btn,
+html.dark .support-submit {
+  background: var(--button-bg);
+  color: var(--button-text);
+}
+
+html.dark .secondary-action,
+html.dark .view-result,
+html.dark .dashboard-btn,
+html.dark .expense-total,
+html.dark .running-total {
+  background: #172f54;
+  border-color: #31598d;
+  color: #bfdbfe;
+}
+
+html.dark .primary-action:hover,
+html.dark .new-analysis-btn:hover,
+html.dark .support-submit:hover {
+  background: #3b82f6;
+}
+
+html.dark .resources-dropdown,
+html.dark .resources-dropdown button,
+html.dark .resources-dropdown strong {
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  border-color: var(--border-color);
+}
+
+html.dark .resources-dropdown button:hover {
+  color: #bfdbfe;
+}
+
+html.dark .drawer-overlay,
+html.dark .document-backdrop {
+  background: rgba(2, 6, 23, .72);
+}
+
+html.dark .profile-drawer,
+html.dark .document-panel {
+  background: var(--bg-elevated) !important;
+  border-color: var(--border-color);
+}
+
+html.dark .filing-table-head,
+html.dark .tax-box,
+html.dark .regime,
+html.dark .comparison-column,
+html.dark .bar-track,
+html.dark .review-heading,
+html.dark .classification-suggestion,
+html.dark .section-suggestions {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+  color: var(--text-secondary);
+}
+
+html.dark .legacy-warning,
+html.dark .document-warning,
+html.dark .regime-advisory,
+html.dark .expense-error,
+html.dark .dashboard-error {
+  background: #3a2415;
+  border-color: #8b5e34;
+  color: #fed7aa;
+}
+
+html.dark .floating-chat-btn {
+  background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+  box-shadow: 0 10px 28px rgba(37, 99, 235, .34);
+}
+
+html.dark .app-footer {
+  background: #070d18;
+  border-color: var(--border-color);
+}
+

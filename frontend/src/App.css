@@ -7,6 +7,17 @@
 }
 
 :root {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #eef2f7;
+  --bg-card: #ffffff;
+  --bg-elevated: #ffffff;
+  --text-primary: #172554;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --border-color: #dbe3ef;
+  --accent-color: #2563eb;
+  --button-bg: #1d4ed8;
+  --button-text: #ffffff;
   --primary-dark: #0d1a3a;
   --primary: #1e3a8a;
   --primary-light: #3b82f6;
@@ -36,17 +47,31 @@
 }
 
 html.dark {
-  --dark: #f3f4f6;
-  --dark-light: #d1d5db;
-  --gray: #9ca3af;
-  --gray-light: #4b5563;
-  --gray-lighter: #374151;
-  --background: #111827;
-  --background-dark: #0b1220;
-  --white: #1f2937;
-  --primary-dark: #bfdbfe;
+  --bg-primary: #0b1220;
+  --bg-secondary: #111827;
+  --bg-card: #172235;
+  --bg-elevated: #1e2b42;
+  --text-primary: #f8fafc;
+  --text-secondary: #dbeafe;
+  --text-muted: #a8b6ca;
+  --border-color: #334155;
+  --accent-color: #60a5fa;
+  --button-bg: #2563eb;
+  --button-text: #ffffff;
+  --dark: #f8fafc;
+  --dark-light: #dbeafe;
+  --gray: #a8b6ca;
+  --gray-light: #64748b;
+  --gray-lighter: #334155;
+  --background: #0b1220;
+  --background-dark: #070d18;
+  --white: #172235;
+  --primary-dark: #dbeafe;
   --primary: #93c5fd;
   --primary-light: #60a5fa;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, .24);
+  --shadow-md: 0 10px 24px rgba(0, 0, 0, .28);
+  --shadow-lg: 0 22px 48px rgba(0, 0, 0, .36);
 }
 
 html, body {
@@ -60,7 +85,15 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: linear-gradient(170deg, var(--background-dark) 0%, var(--background) 100%);
-  color: var(--dark);
+  color: var(--text-secondary);
+  min-height: 100vh;
+}
+
+html.dark,
+html.dark body,
+html.dark #root {
+  background: var(--bg-primary);
+  color: var(--text-secondary);
 }
 
 .App {
