@@ -831,10 +831,11 @@ def chat(
                 provider = "gemini"
             except GeminiServiceError as exc:
                 logger.warning(
-                    "Chat provider fallback: request_id=%s reason=%s api_status=%s",
+                    "Chat provider fallback: request_id=%s reason=%s api_status=%s detail=%s",
                     request_id,
                     exc.reason,
                     exc.status_code,
+                    exc.detail or "none",
                 )
         else:
             logger.info(

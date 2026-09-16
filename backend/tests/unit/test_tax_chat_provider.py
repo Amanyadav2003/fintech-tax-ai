@@ -123,3 +123,27 @@ def test_gemini_empty_response_is_rejected(monkeypatch):
         assert error.reason == "empty_response"
     else:
         raise AssertionError("expected empty response error")
+
+
+def test_gemini_response_parse_error_is_classified():
+    class BrokenResponse:
+        @property
+        def text(self):
+            raise ValueError("response candidates cannot be converted")
+
+    try:
+        GeminiService._extract_response_text(BrokenResponse())
+    except GeminiServiceError as error:
+        assert error.reason == "response_parse_error"
+        assert "candidates" in error.detail
+    else:
+        raise AssertionError("expected response parsing error")
+
+
+def test_gemini_safe_error_detail_redacts_secrets():
+    error = RuntimeError("api-key=secret-value Authorization: Bearer token-value https://example.test/private")
+    detail = GeminiService._safe_error_detail(error)
+
+    assert "secret-value" not in detail
+    assert "token-value" not in detail
+    assert "example.test" not in detail

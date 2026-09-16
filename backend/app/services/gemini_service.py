@@ -1,6 +1,7 @@
 """Secure Google Gemini integration for the existing tax chat endpoint."""
 
 import os
+import re
 import time
 from threading import Lock
 from typing import Dict, List, Optional
@@ -32,10 +33,11 @@ DEFAULT_TIMEOUT_MS = 15000
 class GeminiServiceError(Exception):
     """A safe, provider-independent Gemini failure."""
 
-    def __init__(self, reason: str, status_code=None):
+    def __init__(self, reason: str, status_code=None, detail: str = ""):
         super().__init__(reason)
         self.reason = reason
         self.status_code = status_code
+        self.detail = detail
 
 
 class GeminiService:
@@ -148,7 +150,7 @@ class GeminiService:
                     temperature=0.2,
                 ),
             )
-            text = (getattr(response, "text", None) or "").strip()
+            text = self._extract_response_text(response)
             if not text:
                 raise GeminiServiceError("empty_response")
             if self._is_generic_feature_response(text):
@@ -160,21 +162,56 @@ class GeminiService:
                 round((time.perf_counter() - started_at) * 1000),
             )
             return text
-        except GeminiServiceError:
+        except GeminiServiceError as exc:
+            logger.warning(
+                "Gemini response failure: request_id=%s model=%s reason=%s "
+                "exception_type=%s api_status=%s detail=%s latency_ms=%d",
+                request_id or "unknown",
+                model,
+                exc.reason,
+                type(exc).__name__,
+                exc.status_code,
+                exc.detail or "none",
+                round((time.perf_counter() - started_at) * 1000),
+            )
             raise
         except Exception as exc:
             reason = self._classify_error(exc)
+            detail = self._safe_error_detail(exc)
             logger.warning(
                 "Gemini request failed: request_id=%s model=%s reason=%s "
-                "error_type=%s api_status=%s latency_ms=%d",
+                "exception_type=%s api_status=%s detail=%s latency_ms=%d",
                 request_id or "unknown",
                 model,
                 reason,
                 type(exc).__name__,
                 self._status_code(exc),
+                detail,
                 round((time.perf_counter() - started_at) * 1000),
             )
-            raise GeminiServiceError(reason, self._status_code(exc)) from exc
+            raise GeminiServiceError(reason, self._status_code(exc), detail) from exc
+
+    @classmethod
+    def _extract_response_text(cls, response) -> str:
+        """Extract text while distinguishing malformed or blocked responses."""
+        try:
+            text = (getattr(response, "text", None) or "").strip()
+        except Exception as exc:
+            raise GeminiServiceError(
+                "response_parse_error",
+                cls._status_code(exc),
+                cls._safe_error_detail(exc),
+            ) from exc
+        if text:
+            return text
+
+        candidates = getattr(response, "candidates", None) or []
+        finish_reasons = [
+            str(getattr(candidate, "finish_reason", "unknown"))
+            for candidate in candidates
+        ]
+        detail = "no_text; finish_reasons=" + ",".join(finish_reasons or ["none"])
+        raise GeminiServiceError("empty_response", detail=detail)
 
     @staticmethod
     def _is_generic_feature_response(text: str) -> bool:
@@ -199,13 +236,22 @@ class GeminiService:
             return "invalid_api_key"
         if "timeout" in text or "timed out" in text:
             return "timeout"
-        if "model" in text and ("not found" in text or "invalid" in text or "unsupported" in text):
+        if status_code == 404 or ("model" in text and ("not found" in text or "invalid" in text or "unsupported" in text)):
             return "invalid_model"
         if "service unavailable" in text or status_code in {500, 502, 503, 504}:
             return "service_unavailable"
         if "unsupported" in text or "not implemented" in text:
             return "sdk_api_compatibility"
         return "request_failed"
+
+    @staticmethod
+    def _safe_error_detail(exc: Exception) -> str:
+        """Return bounded provider detail with secrets and user data removed."""
+        detail = str(getattr(exc, "message", None) or exc).strip()
+        detail = re.sub(r"(?i)bearer\s+[^\s,;]+", "Bearer [redacted]", detail)
+        detail = re.sub(r"(?i)(api[-_ ]?key|authorization|bearer)\s*[:=]\s*[^\s,;]+", r"\1=[redacted]", detail)
+        detail = re.sub(r"https?://[^\s]+", "[url-redacted]", detail)
+        return detail[:240] or type(exc).__name__
 
     @staticmethod
     def _status_code(exc: Exception):
