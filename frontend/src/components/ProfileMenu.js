@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Bell, CircleHelp, FileText, LogOut, Menu, Moon, Receipt, ShieldCheck, Sun, UserRound, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import api from '../services/api';
@@ -22,6 +22,15 @@ function ProfileMenu({ user, onProfile, onDashboard, onHistory, onExpenses, onDo
   };
 
   const closeAnd = (action) => { setOpen(false); action(); };
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [open]);
 
   return <>
     <div className="user-menu-trigger"><div className="avatar">{avatar}</div><span className="user-name">{displayName}</span><button className="icon-button" aria-label="Open navigation menu" onClick={() => setOpen(true)}><Menu size={22} /></button></div>
