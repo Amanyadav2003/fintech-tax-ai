@@ -36,6 +36,11 @@ tax_agent = TaxAgent()
 risk_agent = RiskAgent()
 strategy_agent = StrategyAgent()
 
+CHAT_FALLBACK_MESSAGE = (
+    "TaxMate AI is temporarily unable to reach Gemini. "
+    "Please try your tax question again in a moment."
+)
+
 
 def _stored_calculation_is_legacy(tax_agent_output):
     if not tax_agent_output:
@@ -838,7 +843,13 @@ def chat(
             )
 
         if result is None:
-            result = enhanced_chat_agent.generate_response(query.message, conversation)
+            result = {
+                "response": CHAT_FALLBACK_MESSAGE,
+                "mode": enhanced_chat_agent.detect_operating_mode(query.message).value,
+                "module": enhanced_chat_agent.detect_module(query.message).value,
+                "response_type": "temporary_error",
+                "next_steps": [],
+            }
         
         # Ensure result is a dict
         if isinstance(result, str):
