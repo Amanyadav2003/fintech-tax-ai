@@ -1,6 +1,7 @@
 from app.models import ChatHistory
 from app.routes import tax_routes
 from app.services.gemini_service import GeminiService, GeminiServiceError
+from app.agents.enhanced_chat_agent import EnhancedChatAgent, TaxModule
 
 
 def test_gemini_response_is_returned_and_saved(authenticated_client, db_session, monkeypatch):
@@ -81,6 +82,57 @@ def test_gemini_failure_returns_marked_fallback_without_feature_menu(
     assert "Section 80D" in body["response"]
     assert "Comprehensive Income Tax Guidance" not in body["response"]
     assert "Deduction Planning" not in body["response"]
+
+
+def test_salary_deductions_and_fd_interest_are_income_tax_intent():
+    agent = EnhancedChatAgent()
+    question = (
+        "I am a salaried employee in India earning ₹8 lakh per year. I have paid ₹1.5 lakh "
+        "toward home-loan principal, ₹25,000 for health insurance, and ₹60,000 as bank fixed-deposit "
+        "interest. I also earned ₹8,000 savings-account interest. Please explain my possible deductions "
+        "and whether the old or new tax regime may be more suitable."
+    )
+
+    assert agent.detect_module(question) == TaxModule.INCOME_TAX
+
+
+def test_explicit_bookkeeping_questions_remain_accounting_intent():
+    agent = EnhancedChatAgent()
+
+    assert agent.detect_module("How do I create a journal entry?") == TaxModule.ACCOUNTING
+    assert agent.detect_module("Please reconcile my bank account") == TaxModule.ACCOUNTING
+
+
+def test_tax_fallback_does_not_return_accounting_next_steps(authenticated_client, monkeypatch):
+    monkeypatch.setenv("GEMINI_ENABLED", "true")
+    monkeypatch.setenv("AI_PROVIDER", "gemini")
+    monkeypatch.setattr(
+        tax_routes.gemini_service,
+        "generate_response",
+        lambda *args, **kwargs: (_ for _ in ()).throw(GeminiServiceError("timeout")),
+    )
+    question = (
+        "I am a salaried employee in India earning ₹8 lakh per year. I have paid ₹1.5 lakh toward "
+        "home-loan principal, ₹25,000 for health insurance, and ₹60,000 as bank fixed-deposit interest. "
+        "I also earned ₹8,000 savings-account interest. Please explain my possible deductions and "
+        "whether the old or new tax regime may be more suitable."
+    )
+
+    body = authenticated_client.post(
+        "/api/tax/chat",
+        json={"message": question, "context": {"session_id": "tax-routing-session"}},
+    ).json()
+    response = body["response"].lower()
+
+    assert body["provider"] == "local_fallback"
+    assert body["module"] == "income_tax"
+    assert "trainingaccounting" not in response
+    assert "journal entry" not in response
+    assert "reconcile bank account" not in response
+    assert "financial statement" not in response
+    assert "section 80c" in response
+    assert "section 80d" in response
+    assert "80tta" in response
 
 
 def test_max_tokens_uses_complete_local_salary_fallback(authenticated_client, monkeypatch):
