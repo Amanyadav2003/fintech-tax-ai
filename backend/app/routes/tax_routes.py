@@ -20,6 +20,7 @@ from ..agents.enhanced_chat_agent import EnhancedChatAgent, ConversationContext
 from ..agents.report_agent import ReportAgent
 from ..agents.history_agent import HistoryAgent
 from ..agents.scenario_agent import ScenarioAgent
+from ..services.gemini_service import GeminiServiceError, gemini_service
 from ..utils.database import get_db
 from ..utils.dependencies import get_current_user
 from ..utils.logging_config import logger
@@ -764,6 +765,18 @@ def _chat_analysis_context(current_user: User, db: Session) -> dict:
     }
 
 
+def _recent_chat_history(db: Session, user_id: int, session_id: str) -> list:
+    """Load only this user's recent messages for the active chat session."""
+    messages = db.query(ChatHistory).filter(
+        ChatHistory.user_id == user_id,
+        ChatHistory.session_id == session_id,
+    ).order_by(ChatHistory.created_at.desc()).limit(8).all()
+    return [
+        {"message_type": message.message_type, "message_content": message.message_content}
+        for message in reversed(messages)
+    ]
+
+
 @router.post("/chat", response_model=ChatResponse)
 @limiter.limit("20/minute")
 def chat(
@@ -775,15 +788,39 @@ def chat(
     """AI Chat Assistant - Ask tax questions with history tracking"""
 
     try:
+        if not query.message.strip():
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Message cannot be empty")
+
         # Generate session ID from user (or could be passed in query)
         session_id = query.context.get("session_id", f"session_{current_user.id}_{datetime.now().timestamp()}") if query.context else f"session_{current_user.id}_{datetime.now().timestamp()}"
         
         # Create conversation context for user
         conversation = ConversationContext(str(current_user.id))
         conversation.analysis_context = _chat_analysis_context(current_user, db)
-        
-        # Use EnhancedChatAgent
-        result = enhanced_chat_agent.generate_response(query.message, conversation)
+
+        recent_history = _recent_chat_history(db, current_user.id, session_id)
+        result = None
+        if gemini_service.provider_enabled:
+            try:
+                response_text = gemini_service.generate_response(
+                    query.message,
+                    recent_history=recent_history,
+                    analysis_context=conversation.analysis_context,
+                )
+                mode = enhanced_chat_agent.detect_operating_mode(query.message).value
+                module = enhanced_chat_agent.detect_module(query.message).value
+                result = {
+                    "response": response_text,
+                    "mode": mode,
+                    "module": module,
+                    "response_type": "general",
+                    "next_steps": [],
+                }
+            except GeminiServiceError as exc:
+                logger.warning("Gemini unavailable; using local chat fallback: reason=%s", exc.reason)
+
+        if result is None:
+            result = enhanced_chat_agent.generate_response(query.message, conversation)
         
         # Ensure result is a dict
         if isinstance(result, str):
@@ -846,6 +883,8 @@ def chat(
         logger.info(f"Chat request processed: user={current_user.id}, mode={result.get('mode')}, module={result.get('module')}")
         return response_data
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error in chat: {str(e)}")
         import traceback
