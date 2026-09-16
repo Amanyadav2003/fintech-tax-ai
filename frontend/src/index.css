@@ -204,3 +204,145 @@ html.dark .app-footer {
   border-color: var(--border-color);
 }
 
+/* Route-specific surfaces that retain legacy light-mode declarations. */
+html.dark .income-type-option,
+html.dark .activity-row,
+html.dark .deadline-row,
+html.dark .vault-upload,
+html.dark .form-card,
+html.dark .tax-box,
+html.dark .regime,
+html.dark .filing-table,
+html.dark .calculation-details,
+html.dark .chat-container,
+html.dark .chat-messages,
+html.dark .chat-input-form,
+html.dark .input-wrapper {
+  background: var(--bg-card) !important;
+  border-color: var(--border-color);
+  color: var(--text-secondary);
+}
+
+html.dark .income-type-option strong,
+html.dark .income-type-option small,
+html.dark .activity-row strong,
+html.dark .activity-row span,
+html.dark .deadline-row strong,
+html.dark .deadline-row span,
+html.dark .vault-upload span,
+html.dark .vault-upload small,
+html.dark .form-card h2,
+html.dark .form-card .subtitle,
+html.dark .form-group label,
+html.dark .form-group small,
+html.dark .tax-box .label,
+html.dark .tax-box .value,
+html.dark .regime h3,
+html.dark .regime p,
+html.dark .filing-table-row,
+html.dark .calculation-details summary {
+  color: var(--text-primary);
+}
+
+html.dark .income-type-option small,
+html.dark .activity-row span,
+html.dark .deadline-row span,
+html.dark .vault-upload small,
+html.dark .form-card .subtitle,
+html.dark .form-group small,
+html.dark .tax-box .label,
+html.dark .regime p {
+  color: var(--text-muted);
+}
+
+html.dark .chat-container {
+  background: var(--bg-elevated) !important;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, .42);
+}
+
+html.dark .chat-messages {
+  background: var(--bg-secondary) !important;
+}
+
+html.dark .chat-input-form {
+  background: var(--bg-elevated) !important;
+  border-color: var(--border-color);
+}
+
+html.dark .input-wrapper {
+  background: var(--bg-secondary) !important;
+}
+
+html.dark .chat-input {
+  background: transparent !important;
+  color: var(--text-primary) !important;
+}
+
+html.dark .chat-input::placeholder {
+  color: var(--text-muted);
+}
+
+html.dark .message.bot .message-text {
+  background: #26344d;
+  color: var(--text-primary);
+}
+
+html.dark .message-time {
+  color: var(--text-muted);
+}
+
+html.dark .typing-indicator span {
+  background-color: var(--text-muted);
+}
+
+html.dark .document-dropzone,
+html.dark .suggested-values,
+html.dark .deduction-info,
+html.dark .total-box {
+  border-color: var(--border-color);
+}
+
+html.dark .document-dropzone {
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+}
+
+html.dark .suggested-values,
+html.dark .deduction-info {
+  background: #17342e;
+  color: #b7f7d5;
+}
+
+html.dark .suggested-values h3,
+html.dark .deduction-info strong {
+  color: #b7f7d5;
+}
+
+html.dark .total-box {
+  background: linear-gradient(135deg, #047857, #065f46);
+  color: #f0fdf4;
+}
+
+html.dark .resources-dropdown,
+html.dark .profile-drawer,
+html.dark .document-panel,
+html.dark .chat-container,
+html.dark [class*="-card"],
+html.dark [class*="-panel"],
+html.dark [class*="-row"],
+html.dark [class*="-upload"] {
+  border-color: var(--border-color);
+}
+
+html.dark .resources-dropdown button,
+html.dark .profile-drawer button,
+html.dark .document-panel button,
+html.dark .chat-container button {
+  color: inherit;
+}
+
+html.dark .resources-dropdown button:hover,
+html.dark .profile-drawer button:hover {
+  color: #bfdbfe;
+}
+
