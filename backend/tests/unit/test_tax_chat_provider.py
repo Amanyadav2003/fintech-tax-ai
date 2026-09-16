@@ -213,7 +213,27 @@ def test_gemini_invalid_environment_values_use_defaults(monkeypatch):
     diagnostics = GeminiService().diagnostics()
 
     assert diagnostics["timeout_ms"] == 30000
-    assert diagnostics["max_output_tokens"] == 128
+    assert diagnostics["max_output_tokens"] == 512
+
+
+def test_gemini_thinking_config_is_disabled(monkeypatch):
+    captured = {}
+
+    class Models:
+        def generate_content(self, **kwargs):
+            captured["config"] = kwargs["config"]
+            return type("Response", (), {"text": "complete answer"})()
+
+    class Client:
+        models = Models()
+
+    service = GeminiService()
+    service._get_client = lambda: Client()
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+
+    assert service.generate_response("What is TDS?") == "complete answer"
+    assert captured["config"].thinking_config.thinking_budget == 0
+    assert captured["config"].thinking_config.include_thoughts is False
 
 
 def test_gemini_max_tokens_response_with_text_is_classified_as_partial(monkeypatch):
