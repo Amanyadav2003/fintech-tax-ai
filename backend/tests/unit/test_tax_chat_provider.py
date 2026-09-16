@@ -147,3 +147,46 @@ def test_gemini_safe_error_detail_redacts_secrets():
     assert "secret-value" not in detail
     assert "token-value" not in detail
     assert "example.test" not in detail
+
+
+def test_gemini_environment_defaults_are_bounded(monkeypatch):
+    monkeypatch.delenv("GEMINI_TIMEOUT_MS", raising=False)
+    monkeypatch.delenv("GEMINI_MAX_OUTPUT_TOKENS", raising=False)
+
+    diagnostics = GeminiService().diagnostics()
+
+    assert diagnostics["timeout_ms"] == 30000
+    assert diagnostics["max_output_tokens"] == 1200
+
+
+def test_gemini_invalid_environment_values_use_defaults(monkeypatch):
+    monkeypatch.setenv("GEMINI_TIMEOUT_MS", "not-a-number")
+    monkeypatch.setenv("GEMINI_MAX_OUTPUT_TOKENS", "-1")
+
+    diagnostics = GeminiService().diagnostics()
+
+    assert diagnostics["timeout_ms"] == 30000
+    assert diagnostics["max_output_tokens"] == 128
+
+
+def test_gemini_max_tokens_response_is_rejected(monkeypatch):
+    class Candidate:
+        finish_reason = "FinishReason.MAX_TOKENS"
+
+    class Models:
+        def generate_content(self, **kwargs):
+            return type("Response", (), {"text": "partial answer", "candidates": [Candidate()]})()
+
+    class Client:
+        models = Models()
+
+    service = GeminiService()
+    service._get_client = lambda: Client()
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    try:
+        service.generate_response("Calculate tax for salary of 8 lakh")
+    except GeminiServiceError as error:
+        assert error.reason == "max_output_tokens"
+        assert "MAX_TOKENS" in error.detail
+    else:
+        raise AssertionError("expected truncated response error")
