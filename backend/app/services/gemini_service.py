@@ -32,9 +32,10 @@ DEFAULT_TIMEOUT_MS = 15000
 class GeminiServiceError(Exception):
     """A safe, provider-independent Gemini failure."""
 
-    def __init__(self, reason: str):
+    def __init__(self, reason: str, status_code=None):
         super().__init__(reason)
         self.reason = reason
+        self.status_code = status_code
 
 
 class GeminiService:
@@ -52,6 +53,17 @@ class GeminiService:
     @property
     def provider_enabled(self) -> bool:
         return os.getenv("AI_PROVIDER", "gemini").strip().lower() == "gemini" and self.enabled
+
+    def diagnostics(self) -> Dict:
+        """Return safe runtime configuration diagnostics with no secret values."""
+        return {
+            "provider": os.getenv("AI_PROVIDER", "gemini").strip().lower() or "gemini",
+            "enabled": self.enabled,
+            "model": os.getenv("GEMINI_MODEL", DEFAULT_MODEL).strip() or DEFAULT_MODEL,
+            "key_configured": bool(os.getenv("GEMINI_API_KEY", "").strip()),
+            "timeout_ms": os.getenv("GEMINI_TIMEOUT_MS", str(DEFAULT_TIMEOUT_MS)),
+            "max_output_tokens": os.getenv("GEMINI_MAX_OUTPUT_TOKENS", "700"),
+        }
 
     def _get_client(self):
         api_key = os.getenv("GEMINI_API_KEY", "").strip()
@@ -76,20 +88,36 @@ class GeminiService:
                 raise
             except Exception as exc:
                 logger.error("Gemini client initialization failed: %s", type(exc).__name__)
-                raise GeminiServiceError("client_initialization_failed") from exc
+                raise GeminiServiceError(
+                    "client_initialization_failed",
+                    self._status_code(exc),
+                ) from exc
 
     def generate_response(
         self,
         message: str,
         recent_history: Optional[List[Dict]] = None,
         analysis_context: Optional[Dict] = None,
+        request_id: Optional[str] = None,
     ) -> str:
         """Generate one response without exposing provider details to callers."""
+        started_at = time.perf_counter()
+        diagnostics = self.diagnostics()
+        logger.info(
+            "Gemini request started: request_id=%s provider=%s model=%s "
+            "gemini_key_configured=%s timeout_ms=%s max_output_tokens=%s",
+            request_id or "unknown",
+            diagnostics["provider"],
+            diagnostics["model"],
+            diagnostics["key_configured"],
+            diagnostics["timeout_ms"],
+            diagnostics["max_output_tokens"],
+        )
         if not message or not message.strip():
             raise GeminiServiceError("empty_message")
 
         client = self._get_client()
-        model = os.getenv("GEMINI_MODEL", DEFAULT_MODEL).strip() or DEFAULT_MODEL
+        model = diagnostics["model"]
         history = (recent_history or [])[-MAX_HISTORY_MESSAGES:]
         transcript = []
         for item in history:
@@ -108,7 +136,6 @@ class GeminiService:
             f"{context_text}\nCurrent user message:\n{message.strip()}"
         )
 
-        started_at = time.perf_counter()
         try:
             from google.genai import types
 
@@ -127,7 +154,8 @@ class GeminiService:
             if self._is_generic_feature_response(text):
                 raise GeminiServiceError("generic_response")
             logger.info(
-                "Gemini request succeeded: model=%s latency_ms=%d",
+                "Gemini request succeeded: request_id=%s model=%s latency_ms=%d",
+                request_id or "unknown",
                 model,
                 round((time.perf_counter() - started_at) * 1000),
             )
@@ -137,13 +165,16 @@ class GeminiService:
         except Exception as exc:
             reason = self._classify_error(exc)
             logger.warning(
-                "Gemini request failed: model=%s reason=%s error_type=%s latency_ms=%d",
+                "Gemini request failed: request_id=%s model=%s reason=%s "
+                "error_type=%s api_status=%s latency_ms=%d",
+                request_id or "unknown",
                 model,
                 reason,
                 type(exc).__name__,
+                self._status_code(exc),
                 round((time.perf_counter() - started_at) * 1000),
             )
-            raise GeminiServiceError(reason) from exc
+            raise GeminiServiceError(reason, self._status_code(exc)) from exc
 
     @staticmethod
     def _is_generic_feature_response(text: str) -> bool:
@@ -160,7 +191,7 @@ class GeminiService:
 
     @staticmethod
     def _classify_error(exc: Exception) -> str:
-        status_code = getattr(exc, "status_code", None) or getattr(exc, "code", None)
+        status_code = GeminiService._status_code(exc)
         text = str(exc).lower()
         if status_code == 429 or "quota" in text or "rate limit" in text or "resource exhausted" in text:
             return "rate_limited"
@@ -172,7 +203,18 @@ class GeminiService:
             return "invalid_model"
         if "service unavailable" in text or status_code in {500, 502, 503, 504}:
             return "service_unavailable"
+        if "unsupported" in text or "not implemented" in text:
+            return "sdk_api_compatibility"
         return "request_failed"
+
+    @staticmethod
+    def _status_code(exc: Exception):
+        """Read provider status without logging the provider response body."""
+        direct_status = getattr(exc, "status_code", None) or getattr(exc, "code", None)
+        if direct_status is not None:
+            return direct_status
+        response = getattr(exc, "response", None)
+        return getattr(response, "status_code", None)
 
 
 gemini_service = GeminiService()

@@ -1,6 +1,6 @@
 from app.models import ChatHistory
 from app.routes import tax_routes
-from app.services.gemini_service import GeminiServiceError
+from app.services.gemini_service import GeminiService, GeminiServiceError
 
 
 def test_gemini_response_is_returned_and_saved(authenticated_client, db_session, monkeypatch):
@@ -14,7 +14,7 @@ def test_gemini_response_is_returned_and_saved(authenticated_client, db_session,
     monkeypatch.setenv("GEMINI_ENABLED", "true")
     monkeypatch.setenv("AI_PROVIDER", "gemini")
 
-    def generate_response(message, recent_history=None, analysis_context=None):
+    def generate_response(message, recent_history=None, analysis_context=None, request_id=None):
         captured["message"] = message
         return generated
 
@@ -67,3 +67,59 @@ def test_gemini_failure_returns_marked_fallback_without_feature_menu(
     assert "temporarily unable" in body["response"]
     assert "Comprehensive Income Tax Guidance" not in body["response"]
     assert "Deduction Planning" not in body["response"]
+
+
+def test_gemini_diagnostics_do_not_expose_key(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "secret-value-that-must-not-be-logged")
+    monkeypatch.setenv("GEMINI_MODEL", "gemini-2.5-flash")
+    monkeypatch.setenv("GEMINI_ENABLED", "true")
+    monkeypatch.setenv("AI_PROVIDER", "gemini")
+    diagnostics = GeminiService().diagnostics()
+
+    assert diagnostics["key_configured"] is True
+    assert diagnostics["model"] == "gemini-2.5-flash"
+    assert "secret-value" not in str(diagnostics)
+
+
+def test_gemini_missing_key_is_classified(monkeypatch):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+
+    try:
+        GeminiService().generate_response("What is TDS?")
+    except GeminiServiceError as error:
+        assert error.reason == "missing_api_key"
+    else:
+        raise AssertionError("expected missing API key error")
+
+
+def test_gemini_provider_error_categories():
+    cases = [
+        (type("Error", (), {"code": 401})(), "invalid_api_key"),
+        (type("Error", (), {"code": 404, "__str__": lambda self: "model not found"})(), "invalid_model"),
+        (type("Error", (), {"code": 429})(), "rate_limited"),
+        (TimeoutError("request timed out"), "timeout"),
+        (RuntimeError("unsupported SDK method"), "sdk_api_compatibility"),
+    ]
+
+    for exception, expected in cases:
+        assert GeminiService._classify_error(exception) == expected
+
+
+def test_gemini_empty_response_is_rejected(monkeypatch):
+    class EmptyModels:
+        def generate_content(self, **kwargs):
+            return type("Response", (), {"text": ""})()
+
+    class EmptyClient:
+        models = EmptyModels()
+
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    service = GeminiService()
+    service._get_client = lambda: EmptyClient()
+
+    try:
+        service.generate_response("What is TDS?")
+    except GeminiServiceError as error:
+        assert error.reason == "empty_response"
+    else:
+        raise AssertionError("expected empty response error")

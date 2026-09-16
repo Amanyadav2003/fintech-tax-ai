@@ -817,6 +817,7 @@ def chat(
                     query.message,
                     recent_history=recent_history,
                     analysis_context=conversation.analysis_context,
+                    request_id=request_id,
                 )
                 mode = enhanced_chat_agent.detect_operating_mode(query.message).value
                 module = enhanced_chat_agent.detect_module(query.message).value
@@ -830,16 +831,20 @@ def chat(
                 provider = "gemini"
             except GeminiServiceError as exc:
                 logger.warning(
-                    "Chat provider fallback: request_id=%s reason=%s",
+                    "Chat provider fallback: request_id=%s reason=%s api_status=%s",
                     request_id,
                     exc.reason,
+                    exc.status_code,
                 )
         else:
             logger.info(
-                "Chat provider disabled: request_id=%s provider=%s enabled=%s",
+                "Chat provider disabled: request_id=%s provider=%s enabled=%s "
+                "gemini_key_configured=%s model=%s",
                 request_id,
-                os.getenv("AI_PROVIDER", "gemini").strip().lower() or "gemini",
-                gemini_service.enabled,
+                gemini_service.diagnostics()["provider"],
+                gemini_service.diagnostics()["enabled"],
+                gemini_service.diagnostics()["key_configured"],
+                gemini_service.diagnostics()["model"],
             )
 
         if result is None:
