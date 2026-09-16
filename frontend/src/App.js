@@ -18,6 +18,7 @@ import ExpenseTracker from './components/ExpenseTracker';
 import Documents from './components/Documents';
 import Changelog from './components/Changelog';
 import ResourceRoute, { ResourcesMenu } from './components/Resources';
+import SupportPanel from './components/SupportPanel';
 import api, { setAuthInitialization } from './services/api';
 import AppBackground from './components/AppBackground';
 import { AlertTriangle, MessageCircle, X } from 'lucide-react';
@@ -44,7 +45,7 @@ const pageTransition = {
   duration: 0.5
 };
 
-const protectedSteps = ['home', 'income-type', 'income', 'deductions', 'results', 'history', 'expenses', 'dashboard', 'profile', 'documents'];
+  const protectedSteps = ['home', 'income-type', 'income', 'deductions', 'results', 'history', 'expenses', 'dashboard', 'profile', 'documents', 'support-admin'];
 
 function App() {
   const [currentStep, setCurrentStep] = useState(() => window.history.state?.taxmateStep || 'landing'); // landing, auth, verify, home, income-type, income, deductions, results, history
@@ -358,6 +359,8 @@ function App() {
         return <Profile user={user || { email: userEmail }} />;
       case 'documents':
         return <Documents onApplyValues={handleApplyDocumentValues} reviewSeed={documentReviewSeed} />;
+      case 'support-admin':
+        return <section className="support-admin-page"><SupportPanel adminOnly /></section>;
       case 'changelog':
         return <Changelog onBack={() => navigateToStep(userEmail ? 'home' : 'auth')} />;
       case 'resource-income-tax':
@@ -373,7 +376,7 @@ function App() {
     }
   };
 
-  const pageNames = { 'income-type': 'Choose your income type', income: 'Income Sources', deductions: 'Deductions', results: 'Results', history: 'History', expenses: 'Expense Tracker', profile: 'Profile', dashboard: 'Compliance Dashboard', documents: 'My Documents', changelog: "What's New", home: 'Home', 'resource-income-tax': 'Income Tax Calculator', 'resource-hra': 'HRA Exemption Calculator', 'resource-advance-tax': 'Advance Tax Calculator' };
+  const pageNames = { 'income-type': 'Choose your income type', income: 'Income Sources', deductions: 'Deductions', results: 'Results', history: 'History', expenses: 'Expense Tracker', profile: 'Profile', dashboard: 'Compliance Dashboard', documents: 'My Documents', 'support-admin': 'Support Admin', changelog: "What's New", home: 'Home', 'resource-income-tax': 'Income Tax Calculator', 'resource-hra': 'HRA Exemption Calculator', 'resource-advance-tax': 'Advance Tax Calculator' };
   const currentPageName = pageNames[currentStep] || (currentStep.startsWith('guide-') ? 'Guide' : 'Workspace');
 
   return (
@@ -388,7 +391,7 @@ function App() {
           </button>
           <nav className="top-nav" aria-label="Primary navigation"><button onClick={() => navigateToStep('home')}>Home</button><ResourcesMenu onNavigate={navigateToStep} hasUnreadUpdate={hasUnreadUpdate} /><span>{currentPageName}</span></nav>
           <div className="user-info">
-            {userEmail && user && <ProfileMenu user={user} onProfile={() => navigateToStep('profile')} onDashboard={handleOpenDashboard} onHistory={() => navigateToStep('history')} onExpenses={() => navigateToStep('expenses')} onDocuments={() => navigateToStep('documents')} onLogout={handleLogout} darkMode={darkMode} onToggleDarkMode={() => setDarkMode(previous => !previous)} />}
+            {userEmail && user && <ProfileMenu user={user} onProfile={() => navigateToStep('profile')} onDashboard={handleOpenDashboard} onHistory={() => navigateToStep('history')} onExpenses={() => navigateToStep('expenses')} onDocuments={() => navigateToStep('documents')} onLogout={handleLogout} onAdminSupport={() => navigateToStep('support-admin')} darkMode={darkMode} onToggleDarkMode={() => setDarkMode(previous => !previous)} />}
             {currentStep === 'dashboard' && (
               <button onClick={handleBackToResults} className="new-analysis-btn">Back</button>
             )}

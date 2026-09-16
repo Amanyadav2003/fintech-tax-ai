@@ -346,3 +346,9 @@ html.dark .profile-drawer button:hover {
   color: #bfdbfe;
 }
 
+.support-admin-page {
+  width: min(100%, 1000px);
+  margin: 0 auto;
+  padding: 24px 0 60px;
+}
+

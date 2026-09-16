@@ -57,10 +57,10 @@ function TicketConversation({ ticket, adminMode, onBack, onRefresh }) {
   </div>;
 }
 
-function SupportPanel() {
+function SupportPanel({ adminOnly = false, onOpenAdminDashboard }) {
   const [tickets, setTickets] = useState([]);
   const [selected, setSelected] = useState(null);
-  const [adminMode, setAdminMode] = useState(false);
+  const [adminMode, setAdminMode] = useState(adminOnly);
   const [adminTickets, setAdminTickets] = useState([]);
   const [adminFilter, setAdminFilter] = useState('');
   const [subject, setSubject] = useState('');
@@ -75,13 +75,16 @@ function SupportPanel() {
     setLoading(true);
     setError('');
     try {
-      const response = await api.get('support/tickets');
-      setTickets(response.data || []);
+      if (!adminOnly) {
+        const response = await api.get('support/tickets');
+        setTickets(response.data || []);
+      }
       try {
         const adminResponse = await api.get(`support/admin/tickets${adminFilter ? `?status_filter=${encodeURIComponent(adminFilter)}` : ''}`);
         setAdminMode(true);
         setAdminTickets(adminResponse.data || []);
       } catch {
+        if (adminOnly) throw new Error('Support admin access required');
         setAdminMode(false);
         setAdminTickets([]);
       }
@@ -90,7 +93,7 @@ function SupportPanel() {
     } finally {
       setLoading(false);
     }
-  }, [adminFilter]);
+  }, [adminFilter, adminOnly]);
 
   useEffect(() => { loadTickets(); }, [loadTickets]);
 
@@ -136,11 +139,11 @@ function SupportPanel() {
   return <div className="support-panel">
     <h3>Help &amp; Support</h3>
     <div className="support-faq"><strong>Common questions</strong><details><summary>How is tax calculated?</summary><p>TaxMate AI compares the applicable old and new regime estimates using the information you provide.</p></details><details><summary>Which regime can I choose?</summary><p>The comparison helps you review both regimes before deciding which applies to your situation.</p></details><details><summary>What documents can I upload?</summary><p>Use My Documents for supported tax records and review every extracted value before applying it.</p></details><details><summary>How do I contact support?</summary><p>Email support@taxmate.ai or raise a ticket below.</p></details></div>
-    <p className="support-contact">For account or filing questions: <a href="mailto:support@taxmate.ai">support@taxmate.ai</a></p>
-    <form className="support-form" onSubmit={submitTicket}><h4>Raise a Support Ticket</h4><label className="support-field">Subject<input value={subject} maxLength="160" required onChange={event => setSubject(event.target.value)} /></label><label className="support-field">Category<select value={category} onChange={event => setCategory(event.target.value)}>{categories.map(value => <option key={value}>{value}</option>)}</select></label><label className="support-field">Question or description<textarea value={description} maxLength="5000" required onChange={event => setDescription(event.target.value)} /></label><button type="submit" className="support-submit" disabled={submitting}>{submitting ? 'Submitting...' : 'Submit ticket'}</button></form>
+    {!adminOnly && <><p className="support-contact">For account or filing questions: <a href="mailto:support@taxmate.ai">support@taxmate.ai</a></p>
+    <form className="support-form" onSubmit={submitTicket}><h4>Raise a Support Ticket</h4><label className="support-field">Subject<input value={subject} maxLength="160" required onChange={event => setSubject(event.target.value)} /></label><label className="support-field">Category<select value={category} onChange={event => setCategory(event.target.value)}>{categories.map(value => <option key={value}>{value}</option>)}</select></label><label className="support-field">Question or description<textarea value={description} maxLength="5000" required onChange={event => setDescription(event.target.value)} /></label><button type="submit" className="support-submit" disabled={submitting}>{submitting ? 'Submitting...' : 'Submit ticket'}</button></form></>}
     {success && <p className="support-success" role="status">{success}</p>}
     {error && <p className="support-error" role="alert">{error}</p>}
-    <section className="support-ticket-list"><div className="support-list-heading"><h4>{adminMode ? 'Support Admin Tickets' : 'My Support Tickets'}</h4><div>{adminMode && <select className="support-filter" value={adminFilter} onChange={event => setAdminFilter(event.target.value)}><option value="">All statuses</option>{statuses.map(value => <option key={value}>{value}</option>)}</select>}<button type="button" className="support-refresh" onClick={loadTickets}>Refresh</button></div></div>{loading ? <p className="support-empty">Loading tickets...</p> : (adminMode ? adminTickets : tickets).length === 0 ? <p className="support-empty">No support tickets yet.</p> : (adminMode ? adminTickets : tickets).map(ticket => <button type="button" className="support-ticket-row" key={ticket.id} onClick={() => openTicket(ticket, adminMode)}><span><strong>{ticket.ticket_code}</strong><small>{ticket.subject} · {ticket.category}</small><small>{ticket.description}</small><small>Created {formatDate(ticket.created_at)} · Updated {formatDate(ticket.updated_at)}</small></span><span className={`support-status status-${ticket.status.toLowerCase().replace(' ', '-')}`}>{ticket.status}</span></button>)}</section>
+    <section className="support-ticket-list"><div className="support-list-heading"><h4>{adminMode ? 'Support Admin Tickets' : 'My Support Tickets'}</h4><div>{adminMode && <>{onOpenAdminDashboard && <button type="button" className="support-refresh" onClick={onOpenAdminDashboard}>Open dashboard</button>}<select className="support-filter" value={adminFilter} onChange={event => setAdminFilter(event.target.value)}><option value="">All statuses</option>{statuses.map(value => <option key={value}>{value}</option>)}</select></>}<button type="button" className="support-refresh" onClick={loadTickets}>Refresh</button></div></div>{loading ? <p className="support-empty">Loading tickets...</p> : (adminMode ? adminTickets : tickets).length === 0 ? <p className="support-empty">No support tickets yet.</p> : (adminMode ? adminTickets : tickets).map(ticket => <button type="button" className="support-ticket-row" key={ticket.id} onClick={() => openTicket(ticket, adminMode)}><span><strong>{ticket.ticket_code}</strong><small>{adminMode && ticket.owner ? `${ticket.owner.name} <${ticket.owner.email}>` : ''}</small><small>{ticket.subject} · {ticket.category}</small><small>{ticket.description}</small><small>Created {formatDate(ticket.created_at)} · Updated {formatDate(ticket.updated_at)}</small></span><span className={`support-status status-${ticket.status.toLowerCase().replace(' ', '-')}`}>{ticket.status}</span></button>)}</section>
   </div>;
 }
 
