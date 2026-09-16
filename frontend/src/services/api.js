@@ -41,6 +41,7 @@ api.interceptors.request.use(
 // Handle token refresh on 401
 api.interceptors.response.use(
   (response) => {
+    window.dispatchEvent(new Event('taxmate:api-available'));
     // Capture and store access token from login/register responses
     if (response.data.access_token) {
       sessionStorage.setItem('access_token', response.data.access_token);
@@ -48,6 +49,9 @@ api.interceptors.response.use(
     return response;
   },
   async (error) => {
+    if (!error.response) {
+      window.dispatchEvent(new Event('taxmate:api-unavailable'));
+    }
     const originalRequest = error.config;
     const requestUrl = originalRequest?.url || '';
     const isAuthRoute = requestUrl.includes('auth/login') || requestUrl.includes('auth/refresh') || requestUrl.includes('auth/register') || requestUrl.includes('auth/me') || requestUrl.includes('auth/verify-otp') || requestUrl.includes('auth/resend-otp') || requestUrl.includes('auth/send-registration-otp') || requestUrl.includes('auth/verify-registration-otp');

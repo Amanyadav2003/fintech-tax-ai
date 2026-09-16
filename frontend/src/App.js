@@ -60,6 +60,7 @@ function App() {
   const [documentValues, setDocumentValues] = useState({});
   const [documentReviewSeed, setDocumentReviewSeed] = useState(null);
   const [sessionNotice, setSessionNotice] = useState('');
+  const [apiAvailabilityNotice, setApiAvailabilityNotice] = useState('');
   const [hasUnreadUpdate, setHasUnreadUpdate] = useState(() => isUpdateUnread());
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('taxmate-theme');
@@ -137,6 +138,17 @@ function App() {
     return () => {
       window.removeEventListener(UPDATE_READ_EVENT, refreshUpdateBadge);
       window.removeEventListener('storage', refreshUpdateBadge);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleApiUnavailable = () => setApiAvailabilityNotice('The backend is waking up or unavailable. Please try again in a moment.');
+    const handleApiAvailable = () => setApiAvailabilityNotice('');
+    window.addEventListener('taxmate:api-unavailable', handleApiUnavailable);
+    window.addEventListener('taxmate:api-available', handleApiAvailable);
+    return () => {
+      window.removeEventListener('taxmate:api-unavailable', handleApiUnavailable);
+      window.removeEventListener('taxmate:api-available', handleApiAvailable);
     };
   }, []);
 
@@ -299,6 +311,7 @@ function App() {
       <div className="loading-container">
         <div className="loading-spinner"></div>
         <p>{authInitializationMessage}</p>
+        {apiAvailabilityNotice && <div className="session-toast expired" role="alert">{apiAvailabilityNotice}</div>}
       </div>
     );
   }
@@ -307,6 +320,7 @@ function App() {
     return (
       <AppBackground variant="vibrant">
         {authInitializationError && <div className="session-toast expired" role="alert">{authInitializationError}</div>}
+        {apiAvailabilityNotice && <div className="session-toast expired" role="alert">{apiAvailabilityNotice}</div>}
         <LandingPage onGetStarted={handleGetStarted} />
         {userEmail && <ChatWidget chatOpen={chatOpen} setChatOpen={setChatOpen} analysis={analysis} />}
       </AppBackground>
@@ -365,6 +379,7 @@ function App() {
   return (
     <AppBackground variant="subtle">
       <div className="App">
+      {apiAvailabilityNotice && <div className="session-toast expired" role="alert">{apiAvailabilityNotice}</div>}
       {sessionNotice && <div className={`session-toast ${sessionNotice}`} role="alert"><AlertTriangle size={18} /><span>{sessionNotice === 'warning' ? 'Your session will expire soon due to inactivity — click anywhere to stay logged in.' : 'Your session expired, please log in again.'}</span>{sessionNotice === 'warning' ? <button className="session-toast-close" onClick={stayLoggedIn} aria-label="Stay logged in">Stay logged in</button> : <button className="session-toast-close" onClick={() => { setSessionNotice(''); navigateToStep('auth'); }} aria-label="Dismiss session expired message"><X size={17} /></button>}</div>}
       <header className="app-header">
         <div className="header-content">
