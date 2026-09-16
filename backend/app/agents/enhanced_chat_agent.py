@@ -697,6 +697,32 @@ class EnhancedChatAgent:
         
         # Income Tax related responses
         if module == TaxModule.INCOME_TAX:
+            if any(term in query_lower for term in ["tax deduction", "tax deductions", "deduction claim", "deductions can", "80c", "80d"]):
+                return """For a salaried employee in India, the available deductions and exemptions depend on the financial year and regime:
+
+• **Standard deduction:** Available against salary income, subject to the applicable year's limit and regime rules.
+• **Section 80C:** Eligible investments and payments such as EPF, PPF, ELSS, life-insurance premium, tuition fees and home-loan principal, within the combined statutory limit. It is generally relevant to the Old Regime.
+• **Section 80D:** Eligible health-insurance premiums and certain medical expenses, with limits depending on age and who is covered.
+• **Section 80CCD(1B):** Additional eligible NPS contribution deduction, subject to its separate limit and regime eligibility.
+• **Section 80E:** Eligible education-loan interest, subject to the section's conditions.
+• **Section 80G:** Eligible donations, subject to the recipient, payment method and applicable limits.
+• **Home-loan interest:** Section 24(b) may apply to eligible interest, with different rules for self-occupied and let-out property.
+• **HRA exemption:** May apply under the Old Regime when the employee receives HRA and pays qualifying rent, subject to the prescribed calculation and documents.
+
+The New Regime generally allows fewer deductions and exemptions than the Old Regime. To identify the correct claims, confirm the financial year or assessment year, regime, salary components, rent/HRA, home-loan interest, investments, insurance, other income and TDS. This is general information; verify the current rules with the Income Tax Department or a qualified tax professional."""
+
+            if any(term in query_lower for term in ["annual salary", "salary 8 lakh", "salary of 8 lakh", "income tax kaise", "calculate my tax", "calculate tax"]):
+                return """For an annual salary of ₹8 lakh, I should not choose the Old or New Regime or state a final tax amount without a few details. The calculation depends on:
+
+1. The financial year and assessment year.
+2. Gross salary versus taxable salary, including the applicable standard deduction.
+3. Old Regime or New Regime.
+4. Eligible HRA/rent exemption, home-loan interest, 80C investments, 80D insurance, 80CCD(1B) NPS and other claims.
+5. Other income such as interest, rent, dividends or capital gains.
+6. TDS already deducted, which affects the final balance or refund.
+
+Share those details and I can show the calculation steps for both regimes. The final tax should be checked against the rules for the relevant FY/AY and official Income Tax Department guidance before filing."""
+
             # Handle old regime vs new regime questions
             if any(word in query_lower for word in ["old regime", "new regime", "regime comparison", "which regime"]):
                 return """📊 **Tax Regime Comparison: Old vs New**

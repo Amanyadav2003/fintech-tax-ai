@@ -1,6 +1,7 @@
 """Secure Google Gemini integration for the existing tax chat endpoint."""
 
 import os
+import time
 from threading import Lock
 from typing import Dict, List, Optional
 
@@ -106,6 +107,7 @@ class GeminiService:
             f"{context_text}\nCurrent user message:\n{message.strip()}"
         )
 
+        started_at = time.perf_counter()
         try:
             from google.genai import types
 
@@ -121,13 +123,39 @@ class GeminiService:
             text = (getattr(response, "text", None) or "").strip()
             if not text:
                 raise GeminiServiceError("empty_response")
+            if self._is_generic_feature_response(text):
+                raise GeminiServiceError("generic_response")
+            logger.info(
+                "Gemini request succeeded: model=%s latency_ms=%d",
+                model,
+                round((time.perf_counter() - started_at) * 1000),
+            )
             return text
         except GeminiServiceError:
             raise
         except Exception as exc:
             reason = self._classify_error(exc)
-            logger.warning("Gemini request failed: reason=%s error_type=%s", reason, type(exc).__name__)
+            logger.warning(
+                "Gemini request failed: model=%s reason=%s error_type=%s latency_ms=%d",
+                model,
+                reason,
+                type(exc).__name__,
+                round((time.perf_counter() - started_at) * 1000),
+            )
             raise GeminiServiceError(reason) from exc
+
+    @staticmethod
+    def _is_generic_feature_response(text: str) -> bool:
+        """Reject the old feature-menu answer when a provider returns it."""
+        markers = (
+            "Income Classification",
+            "Deduction Planning",
+            "Tax Regime Comparison",
+            "Return Filing",
+            "Documentation & Verification",
+            "Ask me anything about taxes",
+        )
+        return sum(marker.lower() in text.lower() for marker in markers) >= 4
 
     @staticmethod
     def _classify_error(exc: Exception) -> str:

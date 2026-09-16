@@ -172,6 +172,7 @@ class ChatResponse(BaseModel):
     suggestions: Optional[List[str]] = []  # For backward compatibility
     requires_context: bool = False
     session_id: Optional[str] = None
+    provider: Optional[str] = None
 
 
 class ReportRequest(BaseModel):

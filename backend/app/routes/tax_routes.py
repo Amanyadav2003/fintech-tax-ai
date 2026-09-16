@@ -2,6 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from typing import List
 import json
+import os
+import time
+import uuid
 from datetime import datetime
 
 from ..models import User, TaxFiling, AuditFlag, ChatHistory, Document
@@ -787,6 +790,8 @@ def chat(
 ):
     """AI Chat Assistant - Ask tax questions with history tracking"""
 
+    request_id = uuid.uuid4().hex[:12]
+    started_at = time.perf_counter()
     try:
         if not query.message.strip():
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Message cannot be empty")
@@ -800,6 +805,7 @@ def chat(
 
         recent_history = _recent_chat_history(db, current_user.id, session_id)
         result = None
+        provider = "local_fallback"
         if gemini_service.provider_enabled:
             try:
                 response_text = gemini_service.generate_response(
@@ -816,8 +822,20 @@ def chat(
                     "response_type": "general",
                     "next_steps": [],
                 }
+                provider = "gemini"
             except GeminiServiceError as exc:
-                logger.warning("Gemini unavailable; using local chat fallback: reason=%s", exc.reason)
+                logger.warning(
+                    "Chat provider fallback: request_id=%s reason=%s",
+                    request_id,
+                    exc.reason,
+                )
+        else:
+            logger.info(
+                "Chat provider disabled: request_id=%s provider=%s enabled=%s",
+                request_id,
+                os.getenv("AI_PROVIDER", "gemini").strip().lower() or "gemini",
+                gemini_service.enabled,
+            )
 
         if result is None:
             result = enhanced_chat_agent.generate_response(query.message, conversation)
@@ -839,6 +857,7 @@ def chat(
             "module": result.get("module", "unknown"),
             "response_type": result.get("response_type", "general"),
             "next_steps": result.get("next_steps", []),
+            "provider": provider,
         }
         
         # Save user message to chat history
@@ -880,7 +899,15 @@ def chat(
             logger.warning(f"Failed to save bot message to history: {str(e)}")
             db.rollback()
         
-        logger.info(f"Chat request processed: user={current_user.id}, mode={result.get('mode')}, module={result.get('module')}")
+        logger.info(
+            "Chat request processed: request_id=%s user=%s provider=%s mode=%s module=%s latency_ms=%d",
+            request_id,
+            current_user.id,
+            provider,
+            result.get("mode"),
+            result.get("module"),
+            round((time.perf_counter() - started_at) * 1000),
+        )
         return response_data
 
     except HTTPException:
