@@ -4,10 +4,16 @@ from app.services.gemini_service import GeminiService, GeminiServiceError
 
 
 def test_gemini_response_is_returned_and_saved(authenticated_client, db_session, monkeypatch):
-    question = "My annual salary is 8 lakh. How should I calculate my income tax?"
+    question = (
+        "My annual salary is ₹8 lakh. Please calculate my estimated income tax under both the "
+        "Old Regime and New Regime. Clearly mention assumptions, standard deduction, taxable "
+        "income, rebate and cess. Use the applicable FY/AY and mention if the calculation may "
+        "change based on the assessment year."
+    )
     generated = (
-        "Assuming FY 2025-26, I would compare taxable income under both regimes "
-        "after the standard deduction and ask for your other income and deductions."
+        "Assumptions: FY 2025-26, gross salary ₹8,00,000, no other income. "
+        "Gross salary, standard deduction, taxable income, Old Regime, New Regime, "
+        "rebate and 4% cess are shown; actual tax depends on your details."
     )
     captured = {}
 
@@ -31,6 +37,14 @@ def test_gemini_response_is_returned_and_saved(authenticated_client, db_session,
     assert response.json()["response"] == generated
     assert response.json()["provider"] == "gemini"
     assert response.json()["session_id"] == "gemini-session"
+    assert "Assumptions" in response.json()["response"]
+    assert "Gross salary" in response.json()["response"]
+    assert "standard deduction" in response.json()["response"]
+    assert "taxable income" in response.json()["response"]
+    assert "Old Regime" in response.json()["response"]
+    assert "New Regime" in response.json()["response"]
+    assert "rebate" in response.json()["response"]
+    assert "cess" in response.json()["response"]
 
     saved = db_session.query(ChatHistory).filter(
         ChatHistory.user_id == user_id,
@@ -269,3 +283,38 @@ def test_gemini_blocked_response_uses_fallback(monkeypatch):
         assert error.reason == "blocked_response"
     else:
         raise AssertionError("expected blocked response error")
+
+
+def test_gemini_limits_history_and_context(monkeypatch):
+    captured = {}
+
+    class Models:
+        def generate_content(self, **kwargs):
+            captured["prompt"] = kwargs["contents"]
+            return type("Response", (), {"text": "bounded answer"})()
+
+    class Client:
+        models = Models()
+
+    service = GeminiService()
+    service._get_client = lambda: Client()
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    history = [
+        {"message_type": "user", "message_content": "old " + ("x" * 2000)}
+        for _ in range(8)
+    ]
+
+    assert service.generate_response("What is TDS?", history, {"analysis": "y" * 5000}) == "bounded answer"
+    assert len(captured["prompt"]) <= 6000 + 3000 + 1000 + 500
+
+
+def test_gemini_oversized_message_is_rejected(monkeypatch):
+    service = GeminiService()
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+
+    try:
+        service.generate_response("x" * 4001)
+    except GeminiServiceError as error:
+        assert error.reason == "message_too_long"
+    else:
+        raise AssertionError("expected oversized message error")
