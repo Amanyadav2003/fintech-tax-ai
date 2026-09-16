@@ -43,11 +43,12 @@ DEFAULT_MAX_OUTPUT_TOKENS = 2048
 class GeminiServiceError(Exception):
     """A safe, provider-independent Gemini failure."""
 
-    def __init__(self, reason: str, status_code=None, detail: str = ""):
+    def __init__(self, reason: str, status_code=None, detail: str = "", usable_text: bool = False):
         super().__init__(reason)
         self.reason = reason
         self.status_code = status_code
         self.detail = detail
+        self.usable_text = usable_text
 
 
 class GeminiService:
@@ -198,6 +199,22 @@ class GeminiService:
                     "blocked_response",
                     detail=f"finish_reason={finish_reason}",
                 )
+            if finish_reason and finish_reason.endswith("MAX_TOKENS"):
+                logger.warning(
+                    "Gemini partial completion: request_id=%s model=%s finish_reason=%s "
+                    "response_chars=%d usable_text=%s latency_ms=%d",
+                    request_id or "unknown",
+                    model,
+                    finish_reason,
+                    len(text),
+                    True,
+                    round((time.perf_counter() - started_at) * 1000),
+                )
+                raise GeminiServiceError(
+                    "max_output_tokens",
+                    detail=f"finish_reason={finish_reason}",
+                    usable_text=True,
+                )
             logger.info(
                 "Gemini request succeeded: request_id=%s model=%s finish_reason=%s "
                 "response_chars=%d usable_text=%s output_tokens=%s latency_ms=%d",
@@ -221,7 +238,7 @@ class GeminiService:
                 type(exc).__name__,
                 exc.status_code,
                 exc.detail or "none",
-                False,
+                exc.usable_text,
                 round((time.perf_counter() - started_at) * 1000),
             )
             raise

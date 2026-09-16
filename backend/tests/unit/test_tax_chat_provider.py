@@ -77,10 +77,43 @@ def test_gemini_failure_returns_marked_fallback_without_feature_menu(
     body = response.json()
     assert response.status_code == 200
     assert body["provider"] == "local_fallback"
-    assert body["response_type"] == "temporary_error"
-    assert "temporarily unable" in body["response"]
+    assert "Section 80C" in body["response"]
+    assert "Section 80D" in body["response"]
     assert "Comprehensive Income Tax Guidance" not in body["response"]
     assert "Deduction Planning" not in body["response"]
+
+
+def test_max_tokens_uses_complete_local_salary_fallback(authenticated_client, monkeypatch):
+    monkeypatch.setenv("GEMINI_ENABLED", "true")
+    monkeypatch.setenv("AI_PROVIDER", "gemini")
+    monkeypatch.setattr(
+        tax_routes.gemini_service,
+        "generate_response",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            GeminiServiceError("max_output_tokens", detail="finish_reason=MAX_TOKENS", usable_text=True)
+        ),
+    )
+
+    response = authenticated_client.post(
+        "/api/tax/chat",
+        json={
+            "message": "My annual salary is ₹8 lakh. Please calculate my estimated income tax under both the Old Regime and New Regime. Clearly mention assumptions, standard deduction, taxable income, rebate and cess.",
+            "context": {"session_id": "max-token-session"},
+        },
+    )
+
+    body = response.json()
+    fallback_text = body["response"].lower()
+    assert response.status_code == 200
+    assert body["provider"] == "local_fallback"
+    assert "assumptions" in fallback_text
+    assert "gross salary" in fallback_text
+    assert "standard deduction" in fallback_text
+    assert "taxable income" in fallback_text
+    assert "old regime" in fallback_text
+    assert "new regime" in fallback_text
+    assert "87a" in fallback_text
+    assert "cess" in fallback_text
 
 
 def test_gemini_diagnostics_do_not_expose_key(monkeypatch):
@@ -183,7 +216,7 @@ def test_gemini_invalid_environment_values_use_defaults(monkeypatch):
     assert diagnostics["max_output_tokens"] == 128
 
 
-def test_gemini_max_tokens_response_with_text_is_returned(monkeypatch):
+def test_gemini_max_tokens_response_with_text_is_classified_as_partial(monkeypatch):
     class Candidate:
         finish_reason = "FinishReason.MAX_TOKENS"
 
@@ -198,11 +231,12 @@ def test_gemini_max_tokens_response_with_text_is_returned(monkeypatch):
     service._get_client = lambda: Client()
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     try:
-        response = service.generate_response("Calculate tax for salary of 8 lakh")
+        service.generate_response("Calculate tax for salary of 8 lakh")
     except GeminiServiceError as error:
-        raise AssertionError(f"usable MAX_TOKENS response should not fail: {error.reason}")
+        assert error.reason == "max_output_tokens"
+        assert error.usable_text is True
     else:
-        assert response == "partial answer"
+        raise AssertionError("expected partial completion classification")
 
 
 def test_gemini_stop_response_is_returned(monkeypatch):
@@ -229,7 +263,7 @@ def test_gemini_candidate_parts_are_used_when_response_text_is_empty(monkeypatch
 
     class Candidate:
         content = Content()
-        finish_reason = "MAX_TOKENS"
+        finish_reason = "STOP"
 
     class Models:
         def generate_content(self, **kwargs):

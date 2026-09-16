@@ -40,6 +40,27 @@ CHAT_FALLBACK_MESSAGE = (
     "TaxMate AI is temporarily unable to reach Gemini. "
     "Please try your tax question again in a moment."
 )
+LOCAL_GENERIC_FEATURE_MARKERS = (
+    "Comprehensive Income Tax Guidance",
+    "Income Classification:",
+    "Deduction Planning:",
+    "Documentation & Verification:",
+)
+
+
+def _local_chat_fallback(query: str, conversation: ConversationContext) -> dict:
+    """Use the existing local agent for a useful, clearly marked fallback."""
+    result = enhanced_chat_agent.generate_response(query, conversation)
+    response = result.get("response", "") if isinstance(result, dict) else str(result or "")
+    if not response or any(marker in response for marker in LOCAL_GENERIC_FEATURE_MARKERS):
+        return {
+            "response": CHAT_FALLBACK_MESSAGE,
+            "mode": enhanced_chat_agent.detect_operating_mode(query).value,
+            "module": enhanced_chat_agent.detect_module(query).value,
+            "response_type": "temporary_error",
+            "next_steps": [],
+        }
+    return result
 
 
 def _stored_calculation_is_legacy(tax_agent_output):
@@ -849,13 +870,7 @@ def chat(
             )
 
         if result is None:
-            result = {
-                "response": CHAT_FALLBACK_MESSAGE,
-                "mode": enhanced_chat_agent.detect_operating_mode(query.message).value,
-                "module": enhanced_chat_agent.detect_module(query.message).value,
-                "response_type": "temporary_error",
-                "next_steps": [],
-            }
+            result = _local_chat_fallback(query.message, conversation)
         
         # Ensure result is a dict
         if isinstance(result, str):
