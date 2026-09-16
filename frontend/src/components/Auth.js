@@ -28,6 +28,13 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
   const [panVerified, setPanVerified] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
   const [loginOtpPending, setLoginOtpPending] = useState(false);
+  const [resetMode, setResetMode] = useState(false);
+  const [resetCodeSent, setResetCodeSent] = useState(false);
+  const [resetVerified, setResetVerified] = useState(false);
+  const [resetOtp, setResetOtp] = useState('');
+  const [resetToken, setResetToken] = useState('');
+  const [resetPassword, setResetPassword] = useState('');
+  const [resetConfirmPassword, setResetConfirmPassword] = useState('');
   const [registrationOtpPending, setRegistrationOtpPending] = useState(false);
   const [registrationOtpVerified, setRegistrationOtpVerified] = useState(false);
   const [employmentType, setEmploymentType] = useState('');
@@ -575,6 +582,92 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
     }
   };
 
+  const startPasswordReset = () => {
+    setResetMode(true);
+    setResetVerified(false);
+    setResetCodeSent(false);
+    setResetOtp('');
+    setResetToken('');
+    setResetPassword('');
+    setResetConfirmPassword('');
+    setError('');
+    setRegistrationSuccess('');
+  };
+
+  const requestPasswordReset = async (event) => {
+    event.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const response = await api.post('auth/password-reset/request', { email: formData.email });
+      setResetCodeSent(true);
+      setResendCountdown(60);
+      setRegistrationSuccess(response.data.message);
+    } catch (err) {
+      setError(getDetailedErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyPasswordReset = async (event) => {
+    event.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const response = await api.post('auth/password-reset/verify', { email: formData.email, otp: resetOtp });
+      setResetToken(response.data.reset_token);
+      setResetVerified(true);
+      setRegistrationSuccess('Code verified. Choose a new password.');
+    } catch (err) {
+      setError(getDetailedErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const completePasswordReset = async (event) => {
+    event.preventDefault();
+    if (resetPassword !== resetConfirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const response = await api.post('auth/password-reset/complete', { email: formData.email, reset_token: resetToken, password: resetPassword });
+      sessionStorage.setItem('access_token', response.data.access_token);
+      sessionStorage.setItem('user_email', formData.email);
+      onUserCreated(formData.email);
+    } catch (err) {
+      setError(getDetailedErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (resetMode) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-transparent px-5 py-12">
+        <motion.div className="fintech-card w-full max-w-md p-7 sm:p-9" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+          <p className="text-sm font-bold uppercase tracking-[0.16em] text-navy-500">Account recovery</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy-900">Reset your password</h1>
+          <p className="mt-3 text-sm leading-6 text-slate-600">Enter your registered email and we will send a six-digit reset code.</p>
+          {error && <div className="mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700" role="alert">{error}</div>}
+          {registrationSuccess && <div className="mt-5 rounded-lg border border-mint-500/30 bg-mint-50 px-4 py-3 text-sm font-medium text-mint-700" role="status">{registrationSuccess}</div>}
+          <form className="mt-7 space-y-4" onSubmit={resetVerified ? completePasswordReset : resetCodeSent ? verifyPasswordReset : requestPasswordReset}>
+            <label className="form-group block text-sm font-semibold text-slate-700" htmlFor="reset-email">Email address<input id="reset-email" type="email" value={formData.email} onChange={event => setFormData(previous => ({ ...previous, email: event.target.value }))} required className="mt-1 w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-navy-500" /></label>
+            {!resetVerified && resetCodeSent && <label className="form-group block text-sm font-semibold text-slate-700" htmlFor="reset-otp">Reset code<input id="reset-otp" type="tel" inputMode="numeric" pattern="[0-9]*" maxLength="6" value={resetOtp} onChange={event => setResetOtp(event.target.value.replace(/\D/g, '').slice(0, 6))} required className="mt-1 w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm tracking-[0.4em] outline-none focus:border-navy-500" /></label>}
+            {resetVerified && <><label className="form-group block text-sm font-semibold text-slate-700" htmlFor="reset-password">New password<input id="reset-password" type="password" value={resetPassword} onChange={event => setResetPassword(event.target.value)} required className="mt-1 w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-navy-500" /></label><label className="form-group block text-sm font-semibold text-slate-700" htmlFor="reset-confirm-password">Confirm new password<input id="reset-confirm-password" type="password" value={resetConfirmPassword} onChange={event => setResetConfirmPassword(event.target.value)} required className="mt-1 w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-navy-500" /></label></>}
+            <button className="fintech-button w-full" type="submit" disabled={loading || (resetCodeSent && !resetVerified && resetOtp.length !== 6)}>{loading ? 'Please wait...' : resetVerified ? 'Set new password' : resetCodeSent ? 'Verify reset code' : 'Send reset code'}</button>
+          </form>
+          {!resetVerified && resetCodeSent && <button type="button" className="mt-4 w-full text-sm font-semibold text-navy-700" onClick={requestPasswordReset} disabled={loading || resendCountdown > 0}>{resendCountdown ? `Resend in ${resendCountdown}s` : 'Resend code'}</button>}
+          <button type="button" className="mt-5 w-full text-sm font-semibold text-navy-700" onClick={() => setResetMode(false)}>Back to login</button>
+        </motion.div>
+      </div>
+    );
+  }
+
   if (isVerifying && (initialVerification || loginOtpPending)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 px-5 py-12">
@@ -672,6 +765,7 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
             <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="password">Password</label><input id="password" type="password" name="password" placeholder="Your secure password" value={formData.password} onChange={handleChange} required className={`w-full rounded-lg border-2 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-navy-500 focus:bg-white focus:ring-4 focus:ring-navy-100 ${fieldErrors.password ? 'border-red-400' : 'border-slate-200'}`} />
             {fieldErrors.password && <div className="mt-1 text-xs font-medium text-red-600">{fieldErrors.password}</div>}
           </motion.div>
+          {isLogin && <button type="button" className="-mt-2 text-right text-sm font-semibold text-navy-700 hover:text-navy-900" onClick={startPasswordReset}>Forgot Password?</button>}
           {!isLogin && <motion.div variants={itemVariants} className="form-group"><label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="confirm_password">Confirm password</label><input id="confirm_password" type="password" name="confirm_password" placeholder="Repeat your password" value={formData.confirm_password} onChange={handleChange} required className={`w-full rounded-lg border-2 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-navy-500 ${formData.confirm_password && formData.confirm_password !== formData.password ? 'border-red-400' : 'border-slate-200'}`} />{formData.confirm_password && formData.confirm_password !== formData.password && <div className="mt-1 text-xs font-medium text-red-600">Passwords do not match</div>}</motion.div>}
           
           {!isLogin && (

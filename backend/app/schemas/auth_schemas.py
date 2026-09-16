@@ -72,6 +72,32 @@ class OTPResend(BaseModel):
     email: EmailStr
 
 
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetVerification(BaseModel):
+    email: EmailStr
+    otp: str = Field(..., pattern=r"^\d{6}$")
+
+
+class PasswordResetComplete(BaseModel):
+    email: EmailStr
+    reset_token: str = Field(..., min_length=32, max_length=128)
+    password: str = Field(..., min_length=8)
+
+    @field_validator('password')
+    @classmethod
+    def password_strength(cls, v):
+        if not any(char.isupper() for char in v):
+            raise ValueError('Password must contain uppercase letter')
+        if not any(char.isdigit() for char in v):
+            raise ValueError('Password must contain digit')
+        if not any(char in '!@#$%^&*' for char in v):
+            raise ValueError('Password must contain special character')
+        return v
+
+
 class RegistrationResponse(BaseModel):
     email: EmailStr
     message: str

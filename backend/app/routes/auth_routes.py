@@ -9,6 +9,8 @@ from datetime import datetime, timedelta
 import secrets
 import threading
 import os
+import hashlib
+import hmac
 from pathlib import Path
 from uuid import uuid4
 
@@ -17,7 +19,8 @@ from ..utils.logging_config import logger
 from ..schemas.auth_schemas import (
     UserRegister, UserLogin, UserResponse, TokenResponse,
     OTPVerification, OTPResend, RegistrationResponse, LoginOTPVerification,
-    NotificationPreferences
+    NotificationPreferences, PasswordResetRequest, PasswordResetVerification,
+    PasswordResetComplete
 )
 from ..models import User, TokenBlacklist
 from ..utils.database import get_db
@@ -42,6 +45,19 @@ if IS_PRODUCTION:
 
 def _normalize_email(email: str) -> str:
     return (email or "").strip().lower()
+
+
+def _hash_reset_value(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def _clear_password_reset_state(user: User) -> None:
+    user.password_reset_otp_hash = None
+    user.password_reset_otp_expires_at = None
+    user.password_reset_attempts = 0
+    user.password_reset_requested_at = None
+    user.password_reset_token_hash = None
+    user.password_reset_token_expires_at = None
 
 
 def _cleanup_expired_pending_registrations() -> None:
@@ -115,6 +131,80 @@ def send_registration_otp(request: Request, payload: OTPResend, db: Session = De
         ) from exc
 
     return {"message": "Registration OTP sent to your email."}
+
+
+@router.post("/password-reset/request")
+@limiter.limit("5/minute")
+def request_password_reset(request: Request, payload: PasswordResetRequest, db: Session = Depends(get_db)):
+    """Start a password reset without revealing whether an email is registered."""
+    email = _normalize_email(payload.email)
+    user = db.query(User).filter(User.email == email).first()
+    generic_message = "If an account exists for this email, a reset code has been sent."
+    if not user or not user.is_active:
+        return {"message": generic_message}
+
+    now = datetime.utcnow()
+    if user.password_reset_requested_at and now - user.password_reset_requested_at < timedelta(seconds=60):
+        return {"message": generic_message}
+
+    otp = f"{secrets.randbelow(1000000):06d}"
+    user.password_reset_otp_hash = _hash_reset_value(otp)
+    user.password_reset_otp_expires_at = now + timedelta(minutes=10)
+    user.password_reset_attempts = 0
+    user.password_reset_requested_at = now
+    user.password_reset_token_hash = None
+    user.password_reset_token_expires_at = None
+    db.commit()
+    try:
+        send_otp_email(email, otp)
+    except EmailDeliveryError as exc:
+        _clear_password_reset_state(user)
+        db.commit()
+        logger.error("Password reset email delivery failed for %s", email)
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Unable to send password reset email") from exc
+    return {"message": generic_message}
+
+
+@router.post("/password-reset/verify")
+@limiter.limit("10/minute")
+def verify_password_reset(request: Request, payload: PasswordResetVerification, db: Session = Depends(get_db)):
+    email = _normalize_email(payload.email)
+    user = db.query(User).filter(User.email == email).first()
+    if not user or not user.password_reset_otp_hash or not user.password_reset_otp_expires_at:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired reset code")
+    if user.password_reset_otp_expires_at < datetime.utcnow():
+        _clear_password_reset_state(user)
+        db.commit()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired reset code")
+    if user.password_reset_attempts >= 5:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Too many incorrect reset attempts")
+    user.password_reset_attempts += 1
+    if not hmac.compare_digest(user.password_reset_otp_hash, _hash_reset_value(payload.otp)):
+        db.commit()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired reset code")
+    reset_token = secrets.token_urlsafe(48)
+    user.password_reset_token_hash = _hash_reset_value(reset_token)
+    user.password_reset_token_expires_at = datetime.utcnow() + timedelta(minutes=10)
+    user.password_reset_otp_hash = None
+    user.password_reset_otp_expires_at = None
+    user.password_reset_attempts = 0
+    db.commit()
+    return {"verified": True, "reset_token": reset_token}
+
+
+@router.post("/password-reset/complete")
+@limiter.limit("10/minute")
+def complete_password_reset(request: Request, payload: PasswordResetComplete, db: Session = Depends(get_db)):
+    email = _normalize_email(payload.email)
+    user = db.query(User).filter(User.email == email).first()
+    if not user or not user.password_reset_token_hash or not user.password_reset_token_expires_at or user.password_reset_token_expires_at < datetime.utcnow():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired reset session")
+    if not hmac.compare_digest(user.password_reset_token_hash, _hash_reset_value(payload.reset_token)):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired reset session")
+    user.password_hash = SecurityManager.hash_password(payload.password)
+    _clear_password_reset_state(user)
+    db.commit()
+    return _issue_tokens(user)
 
 
 @router.post("/verify-registration-otp")

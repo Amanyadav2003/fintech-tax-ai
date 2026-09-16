@@ -363,3 +363,41 @@ class TestTokenSecurity:
         # Token should be in response for frontend to know login succeeded
         # but real token is in cookie (HttpOnly)
         assert login_response.status_code == 200
+
+    def test_password_reset_issues_session_and_preserves_login_otp(self, client, test_user_data, monkeypatch):
+        email = f"{uuid4().hex[:8]}_{test_user_data['email']}"
+        unique_data = {**test_user_data, "email": email, "pan": unique_pan()}
+        register_user_via_otp(
+            client,
+            email,
+            "TestPassword123!",
+            name=unique_data["name"],
+            phone=unique_data["phone"],
+            pan=unique_data["pan"],
+            age=unique_data["age"],
+            state=unique_data["state"],
+        )
+
+        sent_codes = []
+        monkeypatch.setattr("app.routes.auth_routes.send_otp_email", lambda recipient, otp: sent_codes.append((recipient, otp)))
+        request_response = client.post("/api/auth/password-reset/request", json={"email": email})
+        assert request_response.status_code == 200
+        assert sent_codes[-1][0] == email
+
+        otp = sent_codes[-1][1]
+        verify_response = client.post("/api/auth/password-reset/verify", json={"email": email, "otp": otp})
+        assert verify_response.status_code == 200
+        reset_token = verify_response.json()["reset_token"]
+
+        complete_response = client.post("/api/auth/password-reset/complete", json={
+            "email": email,
+            "reset_token": reset_token,
+            "password": "NewPassword456!",
+        })
+        assert complete_response.status_code == 200
+        assert client.get("/api/auth/me").json()["email"] == email
+
+        client.post("/api/auth/logout")
+        login_response = client.post("/api/auth/login", json={"email": email, "password": "NewPassword456!"})
+        assert login_response.status_code == 200
+        assert login_response.json()["otp_required"] is True
