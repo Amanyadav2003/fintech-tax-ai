@@ -19,7 +19,7 @@ import Documents from './components/Documents';
 import Changelog from './components/Changelog';
 import ResourceRoute, { ResourcesMenu } from './components/Resources';
 import SupportPanel from './components/SupportPanel';
-import api, { setAuthInitialization } from './services/api';
+import api, { setAuthInitialization, warmBackend } from './services/api';
 import AppBackground from './components/AppBackground';
 import { AlertTriangle, MessageCircle, X } from 'lucide-react';
 import { isUpdateUnread, UPDATE_READ_EVENT } from './data/updates';
@@ -143,15 +143,42 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const handleApiUnavailable = () => setApiAvailabilityNotice('The backend is waking up or unavailable. Please try again in a moment.');
-    const handleApiAvailable = () => setApiAvailabilityNotice('');
+    let activeWarmOperations = 0;
+    let warmOperationFailed = false;
+    const handleApiWarming = () => setApiAvailabilityNotice('Server is waking up. Please wait...');
+    const handleApiUnavailable = () => {
+      if (activeWarmOperations === 0) setApiAvailabilityNotice('The backend is waking up or unavailable. Please try again in a moment.');
+    };
+    const handleApiAvailable = () => {
+      if (activeWarmOperations === 0) setApiAvailabilityNotice('');
+    };
+    const handleWarmOperationFinished = (event) => {
+      activeWarmOperations = Math.max(0, activeWarmOperations - 1);
+      warmOperationFailed = warmOperationFailed || !event.detail?.available;
+      if (activeWarmOperations === 0) {
+        setApiAvailabilityNotice(warmOperationFailed ? 'The backend is waking up or unavailable. Please try again in a moment.' : '');
+        warmOperationFailed = false;
+      }
+    };
+    const startWarmOperation = () => { activeWarmOperations += 1; };
+    window.addEventListener('taxmate:api-warming', startWarmOperation);
+    window.addEventListener('taxmate:api-warming-finished', handleWarmOperationFinished);
+    window.addEventListener('taxmate:api-warming', handleApiWarming);
     window.addEventListener('taxmate:api-unavailable', handleApiUnavailable);
     window.addEventListener('taxmate:api-available', handleApiAvailable);
+    warmBackend();
     return () => {
+      window.removeEventListener('taxmate:api-warming', startWarmOperation);
+      window.removeEventListener('taxmate:api-warming-finished', handleWarmOperationFinished);
+      window.removeEventListener('taxmate:api-warming', handleApiWarming);
       window.removeEventListener('taxmate:api-unavailable', handleApiUnavailable);
       window.removeEventListener('taxmate:api-available', handleApiAvailable);
     };
   }, []);
+
+  useEffect(() => {
+    if (currentStep === 'auth') warmBackend();
+  }, [currentStep]);
 
   useEffect(() => {
     const checkAuth = async () => {
