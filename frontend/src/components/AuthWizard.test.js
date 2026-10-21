@@ -1,6 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import Auth, { isValidGoogleClientId } from './Auth';
+import Auth, { getPasswordRequirements, isValidGoogleClientId } from './Auth';
 import api from '../services/api';
 
 jest.mock('../services/api', () => ({
@@ -47,6 +47,18 @@ beforeEach(() => {
 
 beforeAll(() => {
   window.scrollTo = jest.fn();
+  jest.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => ({
+    clearRect: jest.fn(),
+    save: jest.fn(),
+    translate: jest.fn(),
+    rotate: jest.fn(),
+    fillRect: jest.fn(),
+    restore: jest.fn(),
+  }));
+});
+
+afterAll(() => {
+  HTMLCanvasElement.prototype.getContext.mockRestore();
 });
 
 test('renders the existing login and registration UI without Google configuration', () => {
@@ -76,6 +88,43 @@ test('moves from valid personal details to account security', () => {
 
   expect(screen.getByText('Step 2 of 4')).toBeTruthy();
   expect(screen.getByText('Account security')).toBeTruthy();
+});
+
+test('password checklist conditions stay in parity with the existing validator', () => {
+  expect(getPasswordRequirements('short').map(requirement => requirement.met)).toEqual([false, false, false, false]);
+  expect(getPasswordRequirements('lowercase8').map(requirement => requirement.met)).toEqual([true, false, true, false]);
+  expect(getPasswordRequirements('Uppercase8').map(requirement => requirement.met)).toEqual([true, true, true, false]);
+  expect(getPasswordRequirements('ValidPass8!').map(requirement => requirement.met)).toEqual([true, true, true, true]);
+});
+
+test('shows and hides the Caps Lock hint for password fields', () => {
+  render(<Auth onUserCreated={jest.fn()} />);
+  const password = screen.getByLabelText('Password');
+  const modifierSpy = jest.spyOn(KeyboardEvent.prototype, 'getModifierState').mockReturnValue(true);
+  fireEvent.keyDown(password);
+  expect(screen.getByText('Caps Lock is on')).toBeTruthy();
+  modifierSpy.mockReturnValue(false);
+  fireEvent.keyUp(password);
+  expect(screen.queryByText('Caps Lock is on')).toBeNull();
+  modifierSpy.mockReturnValue(true);
+  fireEvent.keyDown(password);
+  fireEvent.blur(password);
+  expect(screen.queryByText('Caps Lock is on')).toBeNull();
+  modifierSpy.mockRestore();
+});
+
+test('income slider updates the hero demo and stops its auto-cycle', () => {
+  jest.useFakeTimers();
+  try {
+    render(<Auth onUserCreated={jest.fn()} />);
+    const slider = screen.getByRole('slider', { name: /Try your income/ });
+    fireEvent.change(slider, { target: { value: '2500000' } });
+    expect(screen.getAllByText('₹25L')).toHaveLength(2);
+    jest.advanceTimersByTime(7000);
+    expect(screen.getAllByText('₹25L')).toHaveLength(2);
+  } finally {
+    jest.useRealTimers();
+  }
 });
 
 test('shows the existing validation message and stays on personal details', () => {
