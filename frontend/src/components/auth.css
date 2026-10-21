@@ -396,6 +396,58 @@ body:has(.auth-page) .main-content > div {
   display: contents;
 }
 
+.auth-google-auth-option {
+  grid-column: 1 / -1;
+  width: 100%;
+  margin: 0 !important;
+}
+
+.auth-or-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0;
+  color: var(--auth-mute);
+  font-size: 12px;
+}
+
+.auth-or-divider::before,
+.auth-or-divider::after {
+  height: 1px;
+  flex: 1;
+  background: var(--auth-line);
+  content: "";
+}
+
+.auth-google-shell {
+  width: min(100%, 400px);
+  margin: 0 auto;
+}
+
+.auth-google-button {
+  display: flex;
+  width: 100%;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid var(--auth-line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .05);
+}
+
+.auth-google-button[aria-busy="true"] {
+  pointer-events: none;
+  opacity: .65;
+}
+
+.auth-google-status {
+  margin: 8px 0 0 !important;
+  color: var(--auth-mute);
+  font-size: 12px;
+  text-align: center;
+}
+
 .auth-register-step > * {
   min-width: 0;
   margin: 0 !important;

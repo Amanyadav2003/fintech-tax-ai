@@ -51,6 +51,7 @@ app.state.limiter = limiter
 default_local_origins = [
     "http://localhost:3000",
     "http://localhost:3001",
+    "http://localhost:3002",
 ]
 configured_origins = [
     os.getenv("FRONTEND_URL", "").strip(),

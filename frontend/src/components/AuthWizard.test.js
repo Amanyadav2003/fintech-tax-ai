@@ -49,6 +49,24 @@ beforeAll(() => {
   window.scrollTo = jest.fn();
 });
 
+test('renders the existing login and registration UI without Google configuration', () => {
+  const originalClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+  delete process.env.REACT_APP_GOOGLE_CLIENT_ID;
+  const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+  const { unmount } = render(<Auth onUserCreated={jest.fn()} />);
+  expect(screen.getByRole('button', { name: 'Log in' })).toBeTruthy();
+  expect(screen.queryByTestId('google-signin')).toBeNull();
+  fireEvent.click(screen.getByRole('tab', { name: 'Register' }));
+  expect(screen.getByLabelText('Full name')).toBeTruthy();
+  expect(screen.queryByTestId('google-signin')).toBeNull();
+  expect(warn).toHaveBeenCalledTimes(1);
+  unmount();
+
+  if (originalClientId !== undefined) process.env.REACT_APP_GOOGLE_CLIENT_ID = originalClientId;
+  warn.mockRestore();
+});
+
 test('moves from valid personal details to account security', () => {
   render(<Auth onUserCreated={jest.fn()} />);
   fireEvent.click(screen.getByRole('tab', { name: 'Register' }));

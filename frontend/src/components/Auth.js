@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import './auth.css';
 import api from '../services/api';
@@ -20,6 +20,27 @@ const itemVariants = {
 const shakeVariants = {
   idle: { x: 0 },
   shake: { x: [0, -6, 6, -4, 4, 0], transition: { duration: 0.4 } },
+};
+
+const GOOGLE_IDENTITY_SCRIPT = 'https://accounts.google.com/gsi/client';
+let googleIdentityScriptPromise;
+let googleIdentityInitialized = false;
+let googleConfigurationWarningShown = false;
+let activeGoogleCredentialHandler;
+
+const loadGoogleIdentityScript = () => {
+  if (window.google?.accounts?.id) return Promise.resolve(window.google);
+  if (!googleIdentityScriptPromise) {
+    googleIdentityScriptPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = GOOGLE_IDENTITY_SCRIPT;
+      script.async = true;
+      script.onload = () => resolve(window.google);
+      script.onerror = () => reject(new Error('Unable to load Google Identity Services'));
+      document.head.appendChild(script);
+    });
+  }
+  return googleIdentityScriptPromise;
 };
 
 function AuthPageFrame({ children, className = '' }) {
@@ -105,6 +126,13 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
+  const [googleApiReady, setGoogleApiReady] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const googleButtonRef = useRef(null);
+  const googleRequestInFlight = useRef(false);
+  const googleCredentialHandlerRef = useRef(null);
+  const googleCredentialDispatcher = useRef(response => googleCredentialHandlerRef.current?.(response));
+  const googleClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID || '';
 
   const passwordScore = formData.password.length === 0 ? 0 : [
     formData.password.length >= 8,
@@ -679,6 +707,94 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
     }
   };
 
+  const handleGoogleCredential = async ({ credential }) => {
+    if (!credential || googleRequestInFlight.current) return;
+    googleRequestInFlight.current = true;
+    setGoogleLoading(true);
+    setError('');
+    setRegistrationSuccess('');
+    try {
+      const response = await api.post('auth/google', { credential });
+      if (response.data.access_token) {
+        sessionStorage.setItem('access_token', response.data.access_token);
+        const email = response.data.email || response.data.user?.email;
+        sessionStorage.setItem('user_email', email);
+        onUserCreated(email);
+        return;
+      }
+      setError('Google sign-in failed. Please try again.');
+    } catch (err) {
+      const status = err.response?.status;
+      const serverMessage = err.response?.data?.detail;
+      setError(
+        (status === 404 || status === 503) && typeof serverMessage === 'string'
+          ? serverMessage
+          : 'Google sign-in failed. Please try again.'
+      );
+    } finally {
+      googleRequestInFlight.current = false;
+      setGoogleLoading(false);
+    }
+  };
+
+  googleCredentialHandlerRef.current = handleGoogleCredential;
+  activeGoogleCredentialHandler = googleCredentialDispatcher.current;
+
+  useEffect(() => {
+    if (!googleClientId) {
+      if (!googleConfigurationWarningShown) {
+        console.warn('Google sign-in is not configured; set REACT_APP_GOOGLE_CLIENT_ID to enable it.');
+        googleConfigurationWarningShown = true;
+      }
+      return undefined;
+    }
+
+    let active = true;
+    loadGoogleIdentityScript()
+      .then(google => {
+        if (!active) return;
+        if (!googleIdentityInitialized) {
+          google.accounts.id.initialize({
+            client_id: googleClientId,
+            callback: response => activeGoogleCredentialHandler?.(response),
+            ux_mode: 'popup',
+          });
+          googleIdentityInitialized = true;
+        }
+        setGoogleApiReady(true);
+      })
+      .catch(() => {
+        if (active) setError('Google sign-in failed. Please try again.');
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [googleClientId]);
+
+  useEffect(() => {
+    const wrapper = googleButtonRef.current;
+    if (!googleClientId || !googleApiReady || !wrapper) return;
+    if (wrapper.getClientRects().length === 0) return;
+
+    const width = Math.min(400, wrapper.getBoundingClientRect().width);
+    if (width <= 0) return;
+    wrapper.replaceChildren();
+    window.google.accounts.id.renderButton(wrapper, {
+      theme: 'filled_black',
+      size: 'large',
+      text: 'continue_with',
+      shape: 'rectangular',
+      width,
+    });
+  }, [googleApiReady, googleClientId, isLogin, registerStep]);
+
+  useEffect(() => () => {
+    if (activeGoogleCredentialHandler === googleCredentialDispatcher.current) {
+      activeGoogleCredentialHandler = undefined;
+    }
+  }, []);
+
   const handleResend = async () => {
     if (resendCountdown || loading) return;
     setLoading(true);
@@ -853,6 +969,14 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
         <motion.form className="mt-7 space-y-4 text-left auth-account-form" onSubmit={isLogin ? handleSubmit : handleRegistrationStepSubmit} noValidate={!isLogin} variants={formVariants} initial="hidden" animate={error ? 'shake' : 'visible'}>
           {!isLogin && (
             <div className={registrationStepClass(1)} hidden={registerStep !== 1} aria-hidden={registerStep !== 1}>
+              {googleClientId && <div className="auth-google-auth-option">
+                <div className="auth-or-divider">or</div>
+                <div className="auth-google-shell">
+                  <div ref={googleButtonRef} className="auth-google-button" data-testid="google-signin" aria-busy={googleLoading} />
+                  {googleLoading && <p className="auth-google-status" role="status">Signing in with Google...</p>}
+                  {!googleLoading && !googleApiReady && <p className="auth-google-status" role="status">Loading Google sign-in...</p>}
+                </div>
+              </div>}
               <motion.div variants={itemVariants} className="form-group auth-field auth-field--name">
                 <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="name">Full name</label><input id="name" type="text" name="name" placeholder="Amaan S. Yadav" value={formData.name} onChange={handleChange} required className={`w-full rounded-lg border-2 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-navy-500 focus:bg-white focus:ring-4 focus:ring-navy-100 ${fieldErrors.name ? 'border-red-400' : 'border-slate-200'}`} />
                 {fieldErrors.name && <div className="mt-1 text-xs font-medium text-red-600">{fieldErrors.name}</div>}
@@ -955,6 +1079,14 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
             {loading && <span className="auth-submit-spinner" aria-hidden="true" />}
             <span>{loading ? 'Please wait...' : 'Log in'}</span>
           </motion.button>}
+          {isLogin && googleClientId && <div className="auth-google-auth-option">
+            <div className="auth-or-divider">or</div>
+            <div className="auth-google-shell">
+              <div ref={googleButtonRef} className="auth-google-button" data-testid="google-signin" aria-busy={googleLoading} />
+              {googleLoading && <p className="auth-google-status" role="status">Signing in with Google...</p>}
+              {!googleLoading && !googleApiReady && <p className="auth-google-status" role="status">Loading Google sign-in...</p>}
+            </div>
+          </div>}
           {!isLogin && <div className="auth-wizard-nav">
             <button type="button" className="auth-wizard-back" onClick={handleRegistrationStepBack} disabled={registerStep === 1}>Back</button>
             {registerStep < 4 && <button type="submit" className="auth-wizard-next">{'Next'}</button>}

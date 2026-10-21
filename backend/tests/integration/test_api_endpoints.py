@@ -144,6 +144,22 @@ class TestHealthAndStatus:
         assert openapi_response.status_code == 200
 
 
+class TestCorsOrigins:
+    def test_google_auth_preflight_allows_localhost_3002(self, client):
+        response = client.options(
+            "/api/auth/google",
+            headers={
+                "Origin": "http://localhost:3002",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "content-type",
+            },
+        )
+
+        assert response.status_code == 200
+        assert response.headers["access-control-allow-origin"] == "http://localhost:3002"
+        assert response.headers["access-control-allow-credentials"] == "true"
+
+
 class TestRateLimiting:
     """Test rate limiting on endpoints"""
     
