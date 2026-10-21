@@ -53,17 +53,24 @@ default_local_origins = [
     "http://localhost:3001",
     "http://localhost:3002",
 ]
-configured_origins = [
-    os.getenv("FRONTEND_URL", "").strip(),
-    *[origin.strip() for origin in os.getenv("CORS_ORIGINS", "").split(",") if origin.strip()],
-]
-allowed_origins = [origin for origin in configured_origins if origin]
-for origin in default_local_origins:
-    if origin not in allowed_origins:
-        allowed_origins.append(origin)
+
+
+def _get_allowed_origins(frontend_url=None, cors_origins=None):
+    frontend_url = frontend_url if frontend_url is not None else os.getenv("FRONTEND_URL", "")
+    cors_origins = cors_origins if cors_origins is not None else os.getenv("CORS_ORIGINS", "")
+    configured_origins = [
+        frontend_url.strip(),
+        *[origin.strip() for origin in cors_origins.split(",") if origin.strip()],
+    ]
+    return list(dict.fromkeys([
+        *[origin for origin in configured_origins if origin],
+        *default_local_origins,
+    ]))
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=_get_allowed_origins(),
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],  # FIXED: Specific headers only

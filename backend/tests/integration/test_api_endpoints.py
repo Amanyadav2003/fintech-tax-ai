@@ -5,6 +5,8 @@ Integration tests for Tax Filing API endpoints
 import pytest
 from fastapi import status
 
+from app.main import _get_allowed_hosts, _get_allowed_origins
+
 
 class TestTaxFilingEndpoints:
     """Test tax filing API endpoints"""
@@ -158,6 +160,31 @@ class TestCorsOrigins:
         assert response.status_code == 200
         assert response.headers["access-control-allow-origin"] == "http://localhost:3002"
         assert response.headers["access-control-allow-credentials"] == "true"
+
+    def test_configured_production_and_local_origins_are_exact(self):
+        production_origin = "https://fintech-tax-1kit514m4-fintech-tax-ai.vercel.app"
+        allowed = _get_allowed_origins(
+            production_origin,
+            f"{production_origin},http://localhost:3002",
+        )
+
+        assert production_origin in allowed
+        assert "http://localhost:3002" in allowed
+        assert "https://unrelated.vercel.app" not in allowed
+        assert "*" not in allowed
+
+    def test_unconfigured_origin_is_rejected(self, client):
+        response = client.options(
+            "/api/auth/google",
+            headers={
+                "Origin": "https://unrelated.example",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "content-type",
+            },
+        )
+
+        assert response.status_code == 400
+        assert "access-control-allow-origin" not in response.headers
 
 
 class TestRateLimiting:
