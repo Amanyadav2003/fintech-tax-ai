@@ -53,6 +53,9 @@ default_local_origins = [
     "http://localhost:3001",
     "http://localhost:3002",
 ]
+default_production_origins = [
+    "https://fintech-tax-ai-psi.vercel.app",
+]
 
 
 def _get_allowed_origins(frontend_url=None, cors_origins=None):
@@ -65,6 +68,7 @@ def _get_allowed_origins(frontend_url=None, cors_origins=None):
     return list(dict.fromkeys([
         *[origin for origin in configured_origins if origin],
         *default_local_origins,
+        *default_production_origins,
     ]))
 
 
@@ -78,9 +82,22 @@ app.add_middleware(
 )
 
 # Trusted hosts middleware - Prevent host header injection attacks
+def _get_allowed_hosts(environment=None, configured_hosts=None):
+    environment = (environment or os.getenv("ENVIRONMENT", "development")).strip().lower()
+    configured_hosts = (
+        configured_hosts
+        if configured_hosts is not None
+        else os.getenv("ALLOWED_HOSTS", "localhost,testserver")
+    )
+    hosts = [host.strip() for host in configured_hosts.split(",") if host.strip()]
+    if environment != "production":
+        return list(dict.fromkeys(["localhost", "127.0.0.1", "testserver", *hosts]))
+    return hosts
+
+
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=os.getenv("ALLOWED_HOSTS", "localhost,testserver").split(",")
+    allowed_hosts=_get_allowed_hosts()
 )
 
 # Custom middlewares (order matters)
