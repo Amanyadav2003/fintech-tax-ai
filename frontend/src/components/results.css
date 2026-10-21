@@ -618,6 +618,11 @@
     font-size: 1.4rem;
   }
 
+  .result-card-header h2 {
+    flex: 1;
+    min-width: 0;
+  }
+
   .tax-grid {
     grid-template-columns: 1fr;
     gap: 16px;

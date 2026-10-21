@@ -407,14 +407,18 @@ function App() {
   const currentPageName = pageNames[currentStep] || (currentStep.startsWith('guide-') ? 'Guide' : 'Workspace');
 
   return (
-    <AppBackground variant="subtle">
+    <AppBackground variant={['auth', 'verify', 'home'].includes(currentStep) ? 'vibrant' : 'subtle'}>
       <div className="App">
       {apiAvailabilityNotice && <div className="session-toast expired" role="alert">{apiAvailabilityNotice}</div>}
       {sessionNotice && <div className={`session-toast ${sessionNotice}`} role="alert"><AlertTriangle size={18} /><span>{sessionNotice === 'warning' ? 'Your session will expire soon due to inactivity — click anywhere to stay logged in.' : 'Your session expired, please log in again.'}</span>{sessionNotice === 'warning' ? <button className="session-toast-close" onClick={stayLoggedIn} aria-label="Stay logged in">Stay logged in</button> : <button className="session-toast-close" onClick={() => { setSessionNotice(''); navigateToStep('auth'); }} aria-label="Dismiss session expired message"><X size={17} /></button>}</div>}
       <header className="app-header">
         <div className="header-content">
           <button className="logo" onClick={() => userEmail && navigateToStep('home')} aria-label="Go to Home">
-            TAXMATE AI
+            <svg width="34" height="34" viewBox="0 0 40 40" aria-hidden="true">
+              <rect width="40" height="40" rx="12" fill="#34E5A8" />
+              <path d="M11 27l7-7 5 5 7-9" stroke="#06231a" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            </svg>
+            <span>TaxMate AI</span>
           </button>
           <nav className="top-nav" aria-label="Primary navigation"><button onClick={() => navigateToStep('home')}>Home</button><ResourcesMenu onNavigate={navigateToStep} hasUnreadUpdate={hasUnreadUpdate} /><span>{currentPageName}</span></nav>
           <div className="user-info">

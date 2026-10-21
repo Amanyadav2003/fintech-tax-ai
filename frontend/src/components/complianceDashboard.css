@@ -251,6 +251,12 @@
   gap: 10px;
 }
 
+.document-actions input[type="file"] {
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+}
+
 .upload-state {
   display: flex;
   justify-content: space-between;
@@ -373,7 +379,7 @@
   }
 
   .document-item {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .tracking-steps {
@@ -390,6 +396,10 @@
     padding: 20px 16px 40px;
   }
 
+  .dashboard-grid > * {
+    min-width: 0;
+  }
+
   .dashboard-hero h1 {
     font-size: 2rem;
   }
@@ -400,6 +410,11 @@
   .dashboard-actions {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .reminder-item > div:first-child {
+    width: 100%;
+    min-width: 0;
   }
 
   .tracking-steps,

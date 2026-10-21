@@ -704,7 +704,7 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.4, ease: 'easeOut' }}
       >
-        <p className="text-sm font-bold uppercase tracking-[0.16em] text-navy-500">TaxMate AI</p>
+        <p className="auth-brand text-sm font-bold uppercase tracking-[0.16em] text-navy-500"><svg width="34" height="34" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="12" fill="#34E5A8" /><path d="M11 27l7-7 5 5 7-9" stroke="#06231a" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" fill="none" /></svg><span>TaxMate AI</span></p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy-900">{isLogin ? 'Welcome back' : 'Create your account'}</h1>
         <p className="mt-3 text-sm leading-6 text-slate-600">{isLogin ? 'Log in to access your personal tax workspace.' : 'Set up your secure workspace in a few minutes.'}</p>
         
