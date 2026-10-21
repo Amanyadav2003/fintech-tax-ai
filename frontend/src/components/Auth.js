@@ -9,7 +9,7 @@ import { containsPanOrAadhaar, PII_FIELD_MESSAGE } from '../utils/piiValidator';
 const formVariants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0, transition: { staggerChildren: 0.1 } },
-  shake: { x: [0, -7, 7, -4, 4, 0], transition: { duration: 0.4 } }
+  shake: { opacity: 1, x: [0, -7, 7, -4, 4, 0], transition: { duration: 0.4 } }
 };
 
 const itemVariants = {
@@ -108,6 +108,7 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
   const [resetConfirmPassword, setResetConfirmPassword] = useState('');
   const [registrationOtpPending, setRegistrationOtpPending] = useState(false);
   const [registrationOtpVerified, setRegistrationOtpVerified] = useState(false);
+  const [registrationOtpError, setRegistrationOtpError] = useState('');
   const [employmentType, setEmploymentType] = useState('');
   const [panAadhaarLinked, setPanAadhaarLinked] = useState(false);
   const [emailRemindersEnabled, setEmailRemindersEnabled] = useState(true);
@@ -138,7 +139,9 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
   const googleCredentialHandlerRef = useRef(null);
   const googleCredentialDispatcher = useRef(response => googleCredentialHandlerRef.current?.(response));
   const configuredGoogleClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID || '';
-  const googleClientId = isValidGoogleClientId(configuredGoogleClientId)
+  const googleClientIdIsValid = isValidGoogleClientId(configuredGoogleClientId);
+  const googleConfigurationError = configuredGoogleClientId && !googleClientIdIsValid;
+  const googleClientId = googleClientIdIsValid
     ? configuredGoogleClientId.trim()
     : '';
 
@@ -157,6 +160,12 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
     registerStep === step && `auth-register-step--${registerStepDirection}`,
     registerStep === step && registerStepError && `auth-register-step--shake-${registerStepShake % 2}`,
   ].filter(Boolean).join(' ');
+  const clearAuthMessages = () => {
+    setError('');
+    setRegistrationSuccess('');
+    setRegistrationOtpError('');
+    setRegisterStepError('');
+  };
 
   const verifyPanFormat = () => {
     const valid = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.pan.toUpperCase());
@@ -196,6 +205,7 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
     setLoading(true);
     setError('');
     setRegistrationSuccess('');
+    setRegistrationOtpError('');
     try {
       const response = await api.post('auth/send-registration-otp', { email: formData.email });
       setRegistrationOtpPending(true);
@@ -218,11 +228,13 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
 
   const handleVerifyRegistrationOtp = async () => {
     if (otp.length !== 6) {
-      setError('Please enter the full 6-digit OTP.');
+      setRegistrationOtpError('Please enter the full 6-digit OTP.');
       return;
     }
     setLoading(true);
     setError('');
+    setRegistrationSuccess('');
+    setRegistrationOtpError('');
     try {
       const response = await api.post('auth/verify-registration-otp', { email: formData.email, otp });
       setRegistrationOtpPending(false);
@@ -235,9 +247,14 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
       setRegistrationOtpVerified(false);
       setEmailVerified(false);
       setOtp('');
-      setError(err.response?.status === 400 && err.response?.data?.detail === 'Incorrect OTP'
+      setRegistrationOtpError(err.response?.status === 400 && err.response?.data?.detail === 'Incorrect OTP'
         ? 'Incorrect OTP. Please enter the correct OTP and try again.'
         : getDetailedErrorMessage(err));
+      window.setTimeout(() => {
+        const input = document.querySelector('[data-otp-index="0"]');
+        input?.focus();
+        input?.select();
+      }, 0);
     } finally {
       setLoading(false);
     }
@@ -366,6 +383,8 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
     }
     setFormData(prev => ({ ...prev, [name]: value }));
     setError('');
+    setRegistrationSuccess('');
+    setRegistrationOtpError('');
     setRegisterStepError('');
     if (name === 'pan') {
       setPanVerified(false);
@@ -447,6 +466,9 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
     }
 
     setRegisterStepError('');
+    setError('');
+    setRegistrationSuccess('');
+    setRegistrationOtpError('');
     setRegisterStepDirection('forward');
     setRegisterStep(Math.min(registerStep + 1, 4));
   };
@@ -454,6 +476,9 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
   const handleRegistrationStepBack = () => {
     if (registerStep === 1) return;
     setRegisterStepError('');
+    setError('');
+    setRegistrationSuccess('');
+    setRegistrationOtpError('');
     setRegisterStepDirection('reverse');
     setRegisterStep(Math.max(registerStep - 1, 1));
   };
@@ -807,6 +832,7 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
     if (resendCountdown || loading) return;
     setLoading(true);
     setError('');
+    setRegistrationOtpError('');
     try {
       const endpoint = isLogin ? 'auth/resend-otp' : 'auth/send-registration-otp';
       await api.post(endpoint, { email: formData.email });
@@ -951,15 +977,13 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
         <p className="auth-brand text-sm font-bold uppercase tracking-[0.16em] text-navy-500"><svg width="34" height="34" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="12" fill="#34E5A8" /><path d="M11 27l7-7 5 5 7-9" stroke="#06231a" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" fill="none" /></svg><span>TaxMate AI</span></p>
         <div className={`auth-tabs ${isLogin ? '' : 'auth-tabs--register'}`} role="tablist" aria-label="Account access">
           <span className="auth-tabs-pill" aria-hidden="true" />
-          <button type="button" role="tab" aria-selected={isLogin} onClick={() => setIsLogin(true)}>Login</button>
-          <button type="button" role="tab" aria-selected={!isLogin} onClick={() => setIsLogin(false)}>Register</button>
+          <button type="button" role="tab" aria-selected={isLogin} onClick={() => { clearAuthMessages(); setIsLogin(true); }}>Login</button>
+          <button type="button" role="tab" aria-selected={!isLogin} onClick={() => { clearAuthMessages(); setIsLogin(false); }}>Register</button>
         </div>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy-900">{isLogin ? 'Welcome back' : 'Create your account'}</h1>
         <p className="mt-3 text-sm leading-6 text-slate-600">{isLogin ? 'Log in to access your personal tax workspace.' : 'Set up your secure workspace in a few minutes.'}</p>
         
         {error && <div className="auth-alert auth-alert--error mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700" role="alert">{error}</div>}
-        {registrationSuccess && <div className="auth-alert auth-alert--success mt-6 rounded-lg border border-mint-500/30 bg-mint-50 px-4 py-3 text-sm font-medium text-mint-700" role="status">{registrationSuccess}</div>}
-
         {!isLogin && (
           <div className="auth-wizard-progress" aria-label={`Step ${registerStep} of 4: ${registrationStepNames[registerStep - 1]}`}>
             <div className="auth-wizard-progress-bars" role="progressbar" aria-valuemin="1" aria-valuemax="4" aria-valuenow={registerStep} aria-label="Registration progress">
@@ -977,12 +1001,16 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
         <motion.form className="mt-7 space-y-4 text-left auth-account-form" onSubmit={isLogin ? handleSubmit : handleRegistrationStepSubmit} noValidate={!isLogin} variants={formVariants} initial="hidden" animate={error ? 'shake' : 'visible'}>
           {!isLogin && (
             <div className={registrationStepClass(1)} hidden={registerStep !== 1} aria-hidden={registerStep !== 1}>
-              {googleClientId && <div className="auth-google-auth-option">
+              {(googleClientId || googleConfigurationError) && <div className="auth-google-auth-option">
                 <div className="auth-or-divider">or</div>
                 <div className="auth-google-shell">
-                  <div ref={googleButtonRef} className="auth-google-button" data-testid="google-signin" aria-busy={googleLoading} />
-                  {googleLoading && <p className="auth-google-status" role="status">Signing in with Google...</p>}
-                  {!googleLoading && !googleApiReady && <p className="auth-google-status" role="status">Loading Google sign-in...</p>}
+                  {googleClientId
+                    ? <>
+                        <div ref={googleButtonRef} className="auth-google-button" data-testid="google-signin" aria-busy={googleLoading} />
+                        {googleLoading && <p className="auth-google-status" role="status">Signing in with Google...</p>}
+                        {!googleLoading && !googleApiReady && <p className="auth-google-status" role="status">Loading Google sign-in...</p>}
+                      </>
+                    : <p className="auth-google-status" role="alert">Google sign-in is unavailable because the OAuth client ID is invalid.</p>}
                 </div>
               </div>}
               <motion.div variants={itemVariants} className="form-group auth-field auth-field--name">
@@ -1019,11 +1047,13 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="auth-email-verification mt-4 rounded-xl border border-navy-100 bg-navy-50 p-4">
                 <div className="flex items-center gap-2 text-sm font-semibold text-navy-900"><Mail className="h-4 w-4 text-navy-500" />{registrationOtpVerified ? 'Email verified ✓' : 'Check your email'}</div>
                 <p className="mt-1 text-xs text-slate-600">Enter the 6-digit code sent to {formData.email}.</p>
-                <motion.div variants={shakeVariants} animate={error ? 'shake' : 'idle'} className="auth-otp-grid mt-3 grid grid-cols-6 gap-1 sm:gap-2" onPaste={(e) => { const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6); if (pasted) { e.preventDefault(); setOtp(pasted); } }}>
+                {registrationSuccess && <p className="auth-inline-message" role="status">{registrationSuccess}</p>}
+                <motion.div variants={shakeVariants} animate={registrationOtpError ? 'shake' : 'idle'} className="auth-otp-grid mt-3 grid grid-cols-6 gap-1 sm:gap-2" onPaste={(e) => { const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6); if (pasted) { e.preventDefault(); setOtp(pasted); setRegistrationOtpError(''); } }}>
                   {Array.from({ length: 6 }, (_, index) => (
-                    <input key={index} data-otp-index={index} disabled={registrationOtpVerified} className={`auth-otp-input h-11 min-w-0 w-full rounded-lg border-2 bg-white text-center text-lg font-bold text-navy-900 outline-none ${error ? 'border-red-400 bg-red-50' : registrationOtpVerified ? 'border-mint-500' : 'border-slate-200'} ${registrationOtpVerified ? 'cursor-default' : ''}`} type="tel" inputMode="numeric" pattern="[0-9]*" maxLength="1" value={otp[index] || ''} onInput={(e) => { const digit = e.currentTarget.value.replace(/\D/g, '').slice(-1); const next = otp.split(''); next[index] = digit; setOtp(next.join('').slice(0, 6)); if (digit && index < 5) document.querySelector(`[data-otp-index="${index + 1}"]`)?.focus(); setError(''); }} onKeyDown={(e) => { if (e.key === 'Backspace' && !otp[index] && index > 0) document.querySelector(`[data-otp-index="${index - 1}"]`)?.focus(); }} autoComplete={index === 0 ? 'one-time-code' : 'off'} autoFocus={index === 0} aria-label={`Digit ${index + 1} of 6`} />
+                    <input key={index} data-otp-index={index} disabled={registrationOtpVerified} className={`auth-otp-input h-11 min-w-0 w-full rounded-lg border-2 bg-white text-center text-lg font-bold text-navy-900 outline-none ${registrationOtpError ? 'border-red-400 bg-red-50' : registrationOtpVerified ? 'border-mint-500' : 'border-slate-200'} ${registrationOtpVerified ? 'cursor-default' : ''}`} type="tel" inputMode="numeric" pattern="[0-9]*" maxLength="1" value={otp[index] || ''} onInput={(e) => { const digit = e.currentTarget.value.replace(/\D/g, '').slice(-1); const next = otp.split(''); next[index] = digit; setOtp(next.join('').slice(0, 6)); if (digit && index < 5) document.querySelector(`[data-otp-index="${index + 1}"]`)?.focus(); setRegistrationOtpError(''); }} onKeyDown={(e) => { if (e.key === 'Backspace' && !otp[index] && index > 0) document.querySelector(`[data-otp-index="${index - 1}"]`)?.focus(); }} autoComplete={index === 0 ? 'one-time-code' : 'off'} autoFocus={index === 0} aria-label={`Digit ${index + 1} of 6`} />
                   ))}
                 </motion.div>
+                {registrationOtpError && <p className="auth-wizard-error mt-2" role="alert">{registrationOtpError}</p>}
                 <div className="mt-3 flex items-center justify-between gap-3">
                   <button type="button" onClick={handleVerifyRegistrationOtp} disabled={loading || otp.length !== 6 || registrationOtpVerified} className="fintech-button px-4 py-2 text-xs disabled:opacity-60">{registrationOtpVerified ? 'Verified' : 'Verify OTP'}</button>
                   <div className="flex items-center gap-2">
@@ -1087,12 +1117,16 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
             {loading && <span className="auth-submit-spinner" aria-hidden="true" />}
             <span>{loading ? 'Please wait...' : 'Log in'}</span>
           </motion.button>}
-          {isLogin && googleClientId && <div className="auth-google-auth-option">
+          {isLogin && (googleClientId || googleConfigurationError) && <div className="auth-google-auth-option">
             <div className="auth-or-divider">or</div>
             <div className="auth-google-shell">
-              <div ref={googleButtonRef} className="auth-google-button" data-testid="google-signin" aria-busy={googleLoading} />
-              {googleLoading && <p className="auth-google-status" role="status">Signing in with Google...</p>}
-              {!googleLoading && !googleApiReady && <p className="auth-google-status" role="status">Loading Google sign-in...</p>}
+              {googleClientId
+                ? <>
+                    <div ref={googleButtonRef} className="auth-google-button" data-testid="google-signin" aria-busy={googleLoading} />
+                    {googleLoading && <p className="auth-google-status" role="status">Signing in with Google...</p>}
+                    {!googleLoading && !googleApiReady && <p className="auth-google-status" role="status">Loading Google sign-in...</p>}
+                  </>
+                : <p className="auth-google-status" role="alert">Google sign-in is unavailable because the OAuth client ID is invalid.</p>}
             </div>
           </div>}
           {!isLogin && <div className="auth-wizard-nav">

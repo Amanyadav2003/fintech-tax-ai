@@ -192,3 +192,73 @@ test('only accepts a Google Web OAuth client ID format', () => {
   expect(isValidGoogleClientId('not-a-client-id')).toBe(false);
   expect(isValidGoogleClientId('123456789012-test.apps.googleusercontent.com.evil.test')).toBe(false);
 });
+
+test('shows a configuration error for an invalid non-empty Google client ID', () => {
+  const originalClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+  process.env.REACT_APP_GOOGLE_CLIENT_ID = 'invalid-client-id';
+
+  try {
+    render(<Auth onUserCreated={jest.fn()} />);
+    expect(screen.getByRole('alert').textContent).toContain('Google sign-in is unavailable because the OAuth client ID is invalid.');
+    fireEvent.click(screen.getByRole('tab', { name: 'Register' }));
+    expect(screen.getByRole('alert').textContent).toContain('Google sign-in is unavailable because the OAuth client ID is invalid.');
+    expect(screen.queryByTestId('google-signin')).toBeNull();
+  } finally {
+    if (originalClientId === undefined) delete process.env.REACT_APP_GOOGLE_CLIENT_ID;
+    else process.env.REACT_APP_GOOGLE_CLIENT_ID = originalClientId;
+  }
+});
+
+test('keeps registration fields visible and shows an incorrect OTP inline', async () => {
+  api.post.mockImplementation(endpoint => {
+    if (endpoint === 'auth/verify-registration-otp') {
+      return Promise.reject({ response: { status: 400, data: { detail: 'Incorrect OTP' } } });
+    }
+    return Promise.resolve({ data: { message: 'Registration OTP sent to your email.' } });
+  });
+
+  render(<Auth onUserCreated={jest.fn()} />);
+  fireEvent.click(screen.getByRole('tab', { name: 'Register' }));
+  fillStepOne();
+  fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+  fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'amaan@example.com' } });
+  fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'TaxMate!23' } });
+  fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: 'TaxMate!23' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Send OTP' }));
+
+  await waitFor(() => expect(screen.getByText('Registration OTP sent to your email.')).toBeTruthy());
+  screen.getAllByLabelText(/Digit \d of 6/).forEach((input, index) => {
+    fireEvent.input(input, { target: { value: String(index + 1) } });
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Verify OTP' }));
+
+  await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('Incorrect OTP. Please enter the correct OTP and try again.'));
+  expect(screen.getByLabelText('Email address')).toBeTruthy();
+  expect(screen.getByLabelText('Password')).toBeTruthy();
+  expect(screen.getByLabelText('Confirm password')).toBeTruthy();
+  expect(screen.queryByText('Registration OTP sent to your email.')).toBeNull();
+  expect(document.activeElement).toBe(screen.getByLabelText('Digit 1 of 6'));
+
+  fireEvent.click(screen.getByRole('tab', { name: 'Login' }));
+  expect(screen.queryByText('Incorrect OTP. Please enter the correct OTP and try again.')).toBeNull();
+  expect(screen.queryByText('Registration OTP sent to your email.')).toBeNull();
+});
+
+test('clears registration OTP messages when the wizard step changes', async () => {
+  api.post.mockResolvedValue({ data: { message: 'Registration OTP sent to your email.' } });
+
+  render(<Auth onUserCreated={jest.fn()} />);
+  fireEvent.click(screen.getByRole('tab', { name: 'Register' }));
+  fillStepOne();
+  fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+  fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'amaan@example.com' } });
+  fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'TaxMate!23' } });
+  fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: 'TaxMate!23' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Send OTP' }));
+
+  await waitFor(() => expect(screen.getByText('Registration OTP sent to your email.')).toBeTruthy());
+  fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+  expect(screen.queryByText('Registration OTP sent to your email.')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+  expect(screen.queryByText('Registration OTP sent to your email.')).toBeNull();
+});
