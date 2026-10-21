@@ -144,3 +144,45 @@ test('submits the unchanged registration payload exactly once', async () => {
   expect(onUserCreated).toHaveBeenCalledTimes(1);
   expect(onUserCreated).toHaveBeenCalledWith('amaan@example.com');
 });
+
+test('renders the configured Google sign-in option on Login and Register', async () => {
+  const originalClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+  const originalGoogle = window.google;
+  const renderButton = jest.fn();
+  const initialize = jest.fn();
+  const getClientRects = jest.spyOn(HTMLElement.prototype, 'getClientRects')
+    .mockImplementation(function getClientRectsForGoogleButton() {
+      return this.dataset?.testid === 'google-signin' ? [{}] : [];
+    });
+  const getBoundingClientRect = jest.spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+    .mockImplementation(function getGoogleButtonBounds() {
+      return this.dataset?.testid === 'google-signin' ? { width: 320 } : { width: 0 };
+    });
+  process.env.REACT_APP_GOOGLE_CLIENT_ID = 'test-google-client-id';
+  window.google = { accounts: { id: { initialize, renderButton } } };
+
+  try {
+    render(<Auth onUserCreated={jest.fn()} />);
+    await waitFor(() => expect(renderButton).toHaveBeenCalledTimes(1));
+    expect(screen.getByTestId('google-signin')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Register' }));
+    await waitFor(() => expect(renderButton).toHaveBeenCalledTimes(2));
+    expect(screen.getByTestId('google-signin')).toBeTruthy();
+    expect(initialize).toHaveBeenCalledWith(expect.objectContaining({
+      client_id: 'test-google-client-id',
+      ux_mode: 'popup',
+    }));
+    expect(renderButton).toHaveBeenLastCalledWith(
+      screen.getByTestId('google-signin'),
+      expect.objectContaining({ theme: 'filled_black', text: 'continue_with', width: 320 })
+    );
+  } finally {
+    getClientRects.mockRestore();
+    getBoundingClientRect.mockRestore();
+    if (originalClientId === undefined) delete process.env.REACT_APP_GOOGLE_CLIENT_ID;
+    else process.env.REACT_APP_GOOGLE_CLIENT_ID = originalClientId;
+    if (originalGoogle === undefined) delete window.google;
+    else window.google = originalGoogle;
+  }
+});
