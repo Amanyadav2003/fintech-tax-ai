@@ -130,6 +130,25 @@ body:has(.auth-page) .main-content > div {
   margin-bottom: 18px;
 }
 
+.auth-income-slider-label {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 0 6px;
+  color: var(--auth-mute);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.auth-income-slider-label output {
+  color: var(--auth-gold);
+}
+
+.auth-income-slider {
+  width: 100%;
+  accent-color: var(--auth-mint);
+  cursor: pointer;
+}
+
 .auth-demo-heading b {
   color: var(--auth-text);
   font: 700 28px 'Fraunces', Georgia, serif;
@@ -235,6 +254,98 @@ body:has(.auth-page) .main-content > div {
   -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   animation: auth-rise .8s cubic-bezier(.2, .9, .2, 1) both;
+}
+
+.auth-card-tilt {
+  width: 100%;
+  max-width: 460px;
+  transform: perspective(1100px) rotateX(var(--auth-tilt-y, 0deg)) rotateY(var(--auth-tilt-x, 0deg));
+  transition: transform .25s ease-out;
+  will-change: transform;
+}
+
+.auth-input-wrap {
+  position: relative;
+}
+
+.auth-input-wrap .auth-valid-tick {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  display: grid;
+  width: 19px;
+  height: 19px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--auth-mint);
+  color: #06231a;
+  font-size: 12px;
+  font-weight: 900;
+  pointer-events: none;
+  transform: translateY(-50%) scale(0);
+  animation: auth-tick-in .25s ease-out forwards;
+}
+
+.auth-caps-lock {
+  margin-top: 5px;
+  color: var(--auth-gold);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.auth-password-checklist {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+  margin: 11px 0 0;
+  padding: 0;
+  color: var(--auth-mute);
+  font-size: 11px;
+  list-style: none;
+}
+
+.auth-password-checklist li {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.auth-password-checklist li span {
+  color: var(--auth-mute);
+}
+
+.auth-password-checklist li.is-met {
+  color: var(--auth-mint);
+}
+
+.auth-password-checklist li.is-met span {
+  animation: auth-tick-in .25s ease-out;
+  color: var(--auth-mint);
+}
+
+.auth-confetti {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+}
+
+.cta {
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-ripple {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .55);
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(0);
+  animation: auth-ripple .6s ease-out;
 }
 
 .auth-page .auth-card::before {
@@ -1049,6 +1160,15 @@ body:has(.auth-page) .main-content > div {
   to { transform: rotate(360deg); }
 }
 
+@keyframes auth-tick-in {
+  from { opacity: 0; transform: translateY(-50%) scale(0); }
+  to { opacity: 1; transform: translateY(-50%) scale(1); }
+}
+
+@keyframes auth-ripple {
+  to { opacity: 0; transform: translate(-50%, -50%) scale(18); }
+}
+
 @keyframes auth-step-forward {
   from { opacity: 0; transform: translateX(24px); }
   to { opacity: 1; transform: translateX(0); }
@@ -1102,8 +1222,34 @@ body:has(.auth-page) .main-content > div {
     padding: 28px 24px 24px;
   }
 
+  .auth-card-tilt {
+    max-width: 520px;
+  }
+
   .auth-account-card {
     max-height: none;
+  }
+
+  @media (pointer: coarse) {
+    .auth-card-tilt {
+      transform: none !important;
+      transition: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .auth-page *,
+    .auth-page *::before,
+    .auth-page *::after {
+      animation-duration: .001ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+      transition-duration: .001ms !important;
+    }
+
+    .auth-card-tilt {
+      transform: none !important;
+    }
   }
 }
 

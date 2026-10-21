@@ -24,6 +24,12 @@ const shakeVariants = {
 
 const GOOGLE_IDENTITY_SCRIPT = 'https://accounts.google.com/gsi/client';
 const GOOGLE_CLIENT_ID_PATTERN = /^\d+-[A-Za-z0-9_-]+\.apps\.googleusercontent\.com$/;
+const PASSWORD_REQUIREMENTS = [
+  { label: '8+ characters', test: password => password.length >= 8 },
+  { label: 'Uppercase letter', test: password => /[A-Z]/.test(password) },
+  { label: 'A number', test: password => /[0-9]/.test(password) },
+  { label: 'Special character', test: password => /[!@#$%^&*]/.test(password) },
+];
 let googleIdentityScriptPromise;
 let googleIdentityInitialized = false;
 let googleConfigurationWarningShown = false;
@@ -32,6 +38,54 @@ let activeGoogleCredentialHandler;
 export const isValidGoogleClientId = clientId => (
   typeof clientId === 'string' && GOOGLE_CLIENT_ID_PATTERN.test(clientId.trim())
 );
+
+export const getPasswordRequirements = password => PASSWORD_REQUIREMENTS.map(requirement => ({
+  label: requirement.label,
+  met: requirement.test(password),
+}));
+
+export const showSuccessConfetti = () => {
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('2d');
+  if (!context) return;
+  canvas.setAttribute('aria-hidden', 'true');
+  canvas.className = 'auth-confetti';
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  document.body.appendChild(canvas);
+
+  const pieces = Array.from({ length: 70 }, (_, index) => ({
+    x: canvas.width / 2,
+    y: canvas.height * .28,
+    vx: (index % 2 ? 1 : -1) * (2 + Math.random() * 5),
+    vy: -4 - Math.random() * 6,
+    size: 4 + Math.random() * 5,
+    color: index % 3 ? '#34e5a8' : '#f0c36a',
+    rotation: Math.random() * Math.PI,
+  }));
+  const started = performance.now();
+  const draw = now => {
+    const elapsed = now - started;
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    pieces.forEach(piece => {
+      piece.x += piece.vx;
+      piece.y += piece.vy;
+      piece.vy += .16;
+      piece.rotation += .12;
+      context.save();
+      context.translate(piece.x, piece.y);
+      context.rotate(piece.rotation);
+      context.fillStyle = piece.color;
+      context.fillRect(-piece.size / 2, -piece.size / 2, piece.size, piece.size);
+      context.restore();
+    });
+    if (elapsed < 1000) window.requestAnimationFrame(draw);
+  };
+  window.requestAnimationFrame(draw);
+  window.setTimeout(() => canvas.remove(), 1500);
+};
 
 const loadGoogleIdentityScript = () => {
   if (window.google?.accounts?.id) return Promise.resolve(window.google);
@@ -48,7 +102,29 @@ const loadGoogleIdentityScript = () => {
   return googleIdentityScriptPromise;
 };
 
+function calculateHeroDemo(income) {
+  const oldTax = Math.round(154440 * income / 1200000);
+  const newTax = Math.round(93600 * income / 1200000);
+  return { oldTax, newTax, savings: oldTax - newTax };
+}
+
 function AuthPageFrame({ children, className = '' }) {
+  const [heroIncome, setHeroIncome] = useState(1200000);
+  const heroTouched = useRef(false);
+  const heroDemo = calculateHeroDemo(heroIncome);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (!heroTouched.current) {
+        setHeroIncome(current => current >= 5000000 ? 300000 : current + 500000);
+      }
+    }, 3500);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const formatIncome = value => `₹${(value / 100000).toFixed(1).replace('.0', '')}L`;
+  const formatRupees = value => `₹${value.toLocaleString('en-IN')}`;
+
   return (
     <div className={`auth-page ${className}`}>
       <div className="auth-layout">
@@ -63,12 +139,14 @@ function AuthPageFrame({ children, className = '' }) {
           <h1>Old regime ya New? Dekho kaunsa zyada bachata hai.</h1>
           <p className="auth-hero-copy">Apni income daalo, deductions jodo, aur seconds mein pata karo kaunsa tax regime aapke paise bachayega.</p>
           <div className="auth-demo-card" aria-label="Illustrative tax comparison">
-            <div className="auth-demo-heading"><span>Annual income</span><b>₹12L</b></div>
+            <div className="auth-demo-heading"><span>Annual income</span><b>{formatIncome(heroIncome)}</b></div>
+            <label className="auth-income-slider-label" htmlFor="hero-income">Try your income <output>{formatIncome(heroIncome)}</output></label>
+            <input className="auth-income-slider" id="hero-income" type="range" min="300000" max="5000000" step="50000" value={heroIncome} onChange={event => { heroTouched.current = true; setHeroIncome(Number(event.target.value)); }} />
             <div className="auth-demo-bars">
-              <div className="auth-demo-bar auth-demo-bar--old"><span>₹1,54,440</span><i /><small>Old regime</small></div>
-              <div className="auth-demo-bar auth-demo-bar--new"><span>₹93,600</span><i /><small>New regime</small></div>
+              <div className="auth-demo-bar auth-demo-bar--old"><span>{formatRupees(heroDemo.oldTax)}</span><i style={{ height: `${Math.max(16, Math.min(94, heroDemo.oldTax / 154440 * 86))}%` }} /><small>Old regime</small></div>
+              <div className="auth-demo-bar auth-demo-bar--new"><span>{formatRupees(heroDemo.newTax)}</span><i style={{ height: `${Math.max(12, Math.min(80, heroDemo.newTax / 93600 * 52))}%` }} /><small>New regime</small></div>
             </div>
-            <div className="auth-demo-verdict"><span>Illustrative difference</span><strong>₹60,840</strong></div>
+            <div className="auth-demo-verdict"><span>Illustrative difference</span><strong>{formatRupees(heroDemo.savings)}</strong></div>
           </div>
           <p className="auth-hero-note">Sample illustration with ₹1.5L 80C deduction. Not tax advice.</p>
         </section>
@@ -134,6 +212,7 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
   const [fieldErrors, setFieldErrors] = useState({});
   const [googleApiReady, setGoogleApiReady] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [capsLockFields, setCapsLockFields] = useState({});
   const googleButtonRef = useRef(null);
   const googleRequestInFlight = useRef(false);
   const googleCredentialHandlerRef = useRef(null);
@@ -145,12 +224,8 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
     ? configuredGoogleClientId.trim()
     : '';
 
-  const passwordScore = formData.password.length === 0 ? 0 : [
-    formData.password.length >= 8,
-    /[A-Z]/.test(formData.password),
-    /[0-9]/.test(formData.password),
-    /[!@#$%^&*]/.test(formData.password)
-  ].filter(Boolean).length;
+  const passwordRequirements = getPasswordRequirements(formData.password);
+  const passwordScore = formData.password.length === 0 ? 0 : passwordRequirements.filter(requirement => requirement.met).length;
   const emailReadyForOtp = !isLogin && formData.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email);
   const registrationReady = !isLogin && formData.name.trim() && formData.email && formData.password && formData.confirm_password && formData.password === formData.confirm_password && formData.phone && formData.pan && formData.age && employmentType && panAadhaarLinked && termsAccepted && panVerified && emailVerified;
   const registrationStepNames = ['Personal details', 'Account security', 'Tax profile', 'Finish up'];
@@ -160,6 +235,38 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
     registerStep === step && `auth-register-step--${registerStepDirection}`,
     registerStep === step && registerStepError && `auth-register-step--shake-${registerStepShake % 2}`,
   ].filter(Boolean).join(' ');
+  const updateCapsLock = (field, event) => {
+    setCapsLockFields(previous => ({ ...previous, [field]: event.getModifierState?.('CapsLock') === true || event.capsLock === true }));
+  };
+  const hideCapsLock = field => setCapsLockFields(previous => ({ ...previous, [field]: false }));
+  const isValidField = field => Boolean(formData[field]?.trim()) && !fieldErrors[field];
+  const createRipple = event => {
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    const button = event.currentTarget;
+    const ripple = document.createElement('span');
+    const bounds = button.getBoundingClientRect();
+    ripple.className = 'auth-ripple';
+    ripple.style.left = `${event.clientX - bounds.left}px`;
+    ripple.style.top = `${event.clientY - bounds.top}px`;
+    ripple.setAttribute('aria-hidden', 'true');
+    button.appendChild(ripple);
+    window.setTimeout(() => ripple.remove(), 600);
+  };
+  const celebrateSuccess = () => showSuccessConfetti();
+  const tiltHandlers = {
+    onPointerMove: event => {
+      if (!window.matchMedia?.('(pointer: fine)').matches) return;
+      const bounds = event.currentTarget.getBoundingClientRect();
+      const x = ((event.clientX - bounds.left) / bounds.width - .5) * 12;
+      const y = ((event.clientY - bounds.top) / bounds.height - .5) * -12;
+      event.currentTarget.style.setProperty('--auth-tilt-x', `${x.toFixed(2)}deg`);
+      event.currentTarget.style.setProperty('--auth-tilt-y', `${y.toFixed(2)}deg`);
+    },
+    onPointerLeave: event => {
+      event.currentTarget.style.setProperty('--auth-tilt-x', '0deg');
+      event.currentTarget.style.setProperty('--auth-tilt-y', '0deg');
+    },
+  };
   const clearAuthMessages = () => {
     setError('');
     setRegistrationSuccess('');
@@ -267,6 +374,7 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
       await api.post('auth/register', buildRegistrationPayload());
       sessionStorage.removeItem('pending_verification_email');
       sessionStorage.setItem('user_email', formData.email);
+      celebrateSuccess();
       onUserCreated(formData.email);
     } catch (err) {
       setError(getDetailedErrorMessage(err));
@@ -346,13 +454,13 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
         break;
 
       case 'password':
-        if (value.length < 8) {
+        if (!getPasswordRequirements(value)[0].met) {
           error = 'Password must be at least 8 characters long.';
-        } else if (!/[A-Z]/.test(value)) {
+        } else if (!getPasswordRequirements(value)[1].met) {
           error = 'Password must include at least one uppercase letter.';
-        } else if (!/[0-9]/.test(value)) {
+        } else if (!getPasswordRequirements(value)[2].met) {
           error = 'Password must include at least one number.';
-        } else if (!/[!@#$%^&*]/.test(value)) {
+        } else if (!getPasswordRequirements(value)[3].met) {
           error = 'Password must include at least one special character (!@#$%^&*).';
         }
         break;
@@ -694,6 +802,7 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
         sessionStorage.setItem('access_token', response.data.access_token);
         sessionStorage.setItem('user_email', formData.email);
         if (initialVerification || loginOtpPending) {
+          celebrateSuccess();
           onUserCreated(formData.email);
         } else {
           setEmailVerified(true);
@@ -708,6 +817,7 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
         if (loginResponse.data.access_token) {
           sessionStorage.setItem('access_token', loginResponse.data.access_token);
           sessionStorage.setItem('user_email', formData.email);
+          celebrateSuccess();
           onUserCreated(formData.email);
           return;
         }
@@ -752,6 +862,7 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
         sessionStorage.setItem('access_token', response.data.access_token);
         const email = response.data.email || response.data.user?.email;
         sessionStorage.setItem('user_email', email);
+        celebrateSuccess();
         onUserCreated(email);
         return;
       }
@@ -928,7 +1039,7 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
           <form className="mt-7 space-y-4" onSubmit={resetVerified ? completePasswordReset : resetCodeSent ? verifyPasswordReset : requestPasswordReset}>
             <label className="form-group block text-sm font-semibold text-slate-700" htmlFor="reset-email">Email address<input id="reset-email" type="email" value={formData.email} onChange={event => setFormData(previous => ({ ...previous, email: event.target.value }))} required className="mt-1 w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-navy-500" /></label>
             {!resetVerified && resetCodeSent && <label className="form-group block text-sm font-semibold text-slate-700" htmlFor="reset-otp">Reset code<input id="reset-otp" type="tel" inputMode="numeric" pattern="[0-9]*" maxLength="6" value={resetOtp} onChange={event => setResetOtp(event.target.value.replace(/\D/g, '').slice(0, 6))} required className="mt-1 w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm tracking-[0.4em] outline-none focus:border-navy-500" /></label>}
-            {resetVerified && <><label className="form-group block text-sm font-semibold text-slate-700" htmlFor="reset-password">New password<input id="reset-password" type="password" value={resetPassword} onChange={event => setResetPassword(event.target.value)} required className="mt-1 w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-navy-500" /></label><label className="form-group block text-sm font-semibold text-slate-700" htmlFor="reset-confirm-password">Confirm new password<input id="reset-confirm-password" type="password" value={resetConfirmPassword} onChange={event => setResetConfirmPassword(event.target.value)} required className="mt-1 w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-navy-500" /></label></>}
+            {resetVerified && <><label className="form-group block text-sm font-semibold text-slate-700" htmlFor="reset-password">New password<input id="reset-password" type="password" value={resetPassword} onChange={event => setResetPassword(event.target.value)} onFocus={event => updateCapsLock('reset-password', event)} onKeyDown={event => updateCapsLock('reset-password', event)} onKeyUp={event => updateCapsLock('reset-password', event)} onBlur={() => hideCapsLock('reset-password')} required className="mt-1 w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-navy-500" />{capsLockFields['reset-password'] && <div className="auth-caps-lock" role="status">Caps Lock is on</div>}</label><label className="form-group block text-sm font-semibold text-slate-700" htmlFor="reset-confirm-password">Confirm new password<input id="reset-confirm-password" type="password" value={resetConfirmPassword} onChange={event => setResetConfirmPassword(event.target.value)} onFocus={event => updateCapsLock('reset-confirm-password', event)} onKeyDown={event => updateCapsLock('reset-confirm-password', event)} onKeyUp={event => updateCapsLock('reset-confirm-password', event)} onBlur={() => hideCapsLock('reset-confirm-password')} required className="mt-1 w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-navy-500" />{capsLockFields['reset-confirm-password'] && <div className="auth-caps-lock" role="status">Caps Lock is on</div>}</label></>}
             <button className="fintech-button w-full" type="submit" disabled={loading || (resetCodeSent && !resetVerified && resetOtp.length !== 6)}>{loading ? 'Please wait...' : resetVerified ? 'Set new password' : resetCodeSent ? 'Verify reset code' : 'Send reset code'}</button>
           </form>
           {!resetVerified && resetCodeSent && <button type="button" className="mt-4 w-full text-sm font-semibold text-navy-700" onClick={requestPasswordReset} disabled={loading || resendCountdown > 0}>{resendCountdown ? `Resend in ${resendCountdown}s` : 'Resend code'}</button>}
@@ -968,6 +1079,7 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
   return (
       <AuthPageFrame>
       <div className="grid auth-account-grid w-full max-w-6xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft lg:grid-cols-2">
+      <div className="auth-card-tilt" {...tiltHandlers}>
       <motion.div 
         className="auth-card auth-account-card p-7 sm:p-9 lg:p-12"
         initial={{ opacity: 0, scale: 0.9 }}
@@ -1014,22 +1126,22 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
                 </div>
               </div>}
               <motion.div variants={itemVariants} className="form-group auth-field auth-field--name">
-                <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="name">Full name</label><input id="name" type="text" name="name" placeholder="Amaan S. Yadav" value={formData.name} onChange={handleChange} required className={`w-full rounded-lg border-2 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-navy-500 focus:bg-white focus:ring-4 focus:ring-navy-100 ${fieldErrors.name ? 'border-red-400' : 'border-slate-200'}`} />
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="name">Full name</label><div className="auth-input-wrap"><input id="name" type="text" name="name" placeholder="Amaan S. Yadav" value={formData.name} onChange={handleChange} required className={`w-full rounded-lg border-2 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-navy-500 focus:bg-white focus:ring-4 focus:ring-navy-100 ${fieldErrors.name ? 'border-red-400' : 'border-slate-200'}`} />{isValidField('name') && <span className="auth-valid-tick" aria-hidden="true">✓</span>}</div>
                 {fieldErrors.name && <div className="mt-1 text-xs font-medium text-red-600">{fieldErrors.name}</div>}
               </motion.div>
 
               <motion.div variants={itemVariants} className="form-group auth-field auth-field--pan">
-                <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="pan">PAN card</label><div className="flex gap-2"><input id="pan" type="text" name="pan" placeholder="ABCDE1234F" value={formData.pan} onChange={handleChange} required maxLength="10" className={`min-w-0 flex-1 rounded-lg border-2 bg-slate-50 px-4 py-3 text-sm uppercase outline-none focus:border-navy-500 ${fieldErrors.pan || panError ? 'border-red-400' : panVerified ? 'border-mint-500' : 'border-slate-200'}`} /><button type="button" onClick={verifyPanFormat} className="rounded-lg bg-navy-50 px-3 text-xs font-bold text-navy-700">Verify</button></div>{panVerified && <motion.p initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="mt-1 flex items-center gap-1 text-xs font-semibold text-mint-700"><CheckCircle2 className="h-3.5 w-3.5" /> Format verified</motion.p>}{panError && <p className="mt-1 text-xs font-medium text-red-600">{panError}</p>}<p className="mt-1 text-xs text-slate-500">Structural format check only; this does not verify PAN details with a government database.</p>
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="pan">PAN card</label><div className="flex gap-2"><div className="auth-input-wrap min-w-0 flex-1"><input id="pan" type="text" name="pan" placeholder="ABCDE1234F" value={formData.pan} onChange={handleChange} required maxLength="10" className={`min-w-0 w-full flex-1 rounded-lg border-2 bg-slate-50 px-4 py-3 text-sm uppercase outline-none focus:border-navy-500 ${fieldErrors.pan || panError ? 'border-red-400' : panVerified ? 'border-mint-500' : 'border-slate-200'}`} />{isValidField('pan') && <span className="auth-valid-tick" aria-hidden="true">✓</span>}</div><button type="button" onClick={verifyPanFormat} className="rounded-lg bg-navy-50 px-3 text-xs font-bold text-navy-700">Verify</button></div>{panVerified && <motion.p initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="mt-1 flex items-center gap-1 text-xs font-semibold text-mint-700"><CheckCircle2 className="h-3.5 w-3.5" /> Format verified</motion.p>}{panError && <p className="mt-1 text-xs font-medium text-red-600">{panError}</p>}<p className="mt-1 text-xs text-slate-500">Structural format check only; this does not verify PAN details with a government database.</p>
                 {fieldErrors.pan && <div className="mt-1 text-xs font-medium text-red-600">{fieldErrors.pan}</div>}
               </motion.div>
 
               <motion.div variants={itemVariants} className="form-group auth-field auth-field--phone">
-                <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="phone">Phone number</label><input id="phone" type="tel" name="phone" placeholder="9876543210" value={formData.phone} onChange={handleChange} required className={`w-full rounded-lg border-2 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-navy-500 focus:bg-white focus:ring-4 focus:ring-navy-100 ${fieldErrors.phone ? 'border-red-400' : 'border-slate-200'}`} />
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="phone">Phone number</label><div className="auth-input-wrap"><input id="phone" type="tel" name="phone" placeholder="9876543210" value={formData.phone} onChange={handleChange} required className={`w-full rounded-lg border-2 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-navy-500 focus:bg-white focus:ring-4 focus:ring-navy-100 ${fieldErrors.phone ? 'border-red-400' : 'border-slate-200'}`} />{isValidField('phone') && <span className="auth-valid-tick" aria-hidden="true">✓</span>}</div>
                 {fieldErrors.phone && <div className="mt-1 text-xs font-medium text-red-600">{fieldErrors.phone}</div>}
               </motion.div>
 
               <motion.div variants={itemVariants} className="form-group auth-field auth-field--age">
-                <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="age">Age</label><input id="age" type="number" name="age" placeholder="30" value={formData.age} onChange={handleChange} required className={`w-full rounded-lg border-2 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-navy-500 focus:bg-white focus:ring-4 focus:ring-navy-100 ${fieldErrors.age ? 'border-red-400' : 'border-slate-200'}`} />
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="age">Age</label><div className="auth-input-wrap"><input id="age" type="number" name="age" placeholder="30" value={formData.age} onChange={handleChange} required className={`w-full rounded-lg border-2 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-navy-500 focus:bg-white focus:ring-4 focus:ring-navy-100 ${fieldErrors.age ? 'border-red-400' : 'border-slate-200'}`} />{isValidField('age') && <span className="auth-valid-tick" aria-hidden="true">✓</span>}</div>
                 {fieldErrors.age && <div className="mt-1 text-xs font-medium text-red-600">{fieldErrors.age}</div>}
               </motion.div>
               <motion.div variants={itemVariants} className="auth-photo-block flex flex-wrap items-center gap-3"><div className="auth-photo-preview relative h-20 w-20 overflow-hidden rounded-full border-2 border-slate-200 bg-slate-100">{profilePhotoPreview ? <img src={profilePhotoPreview} alt="Profile preview" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-2xl">👤</div>}<Camera className="absolute bottom-0 right-0 rounded-full bg-navy-700 p-1 text-white" size={24} /></div><label className="auth-photo-action cursor-pointer rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-navy-700">Take Photo<input type="file" accept="image/*" capture="environment" onChange={handlePhotoChange} className="hidden" /></label><label className="auth-photo-action cursor-pointer rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-navy-700">Choose from Gallery<input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" /></label><span className="auth-photo-note w-full text-xs text-slate-500">Optional. Images only, maximum 2MB.</span></motion.div>
@@ -1040,7 +1152,7 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
           <div className={isLogin ? 'auth-login-fields' : registrationStepClass(2)} hidden={!isLogin && registerStep !== 2} aria-hidden={!isLogin && registerStep !== 2}>
           <motion.div variants={itemVariants} className="form-group auth-field auth-field--email">
             <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="email">Email address</label>
-            <div className="flex gap-2"><input id="email" type="email" name="email" placeholder="you@example.com" value={formData.email} onChange={handleChange} required className={`min-w-0 flex-1 rounded-lg border-2 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-navy-500 focus:bg-white focus:ring-4 focus:ring-navy-100 ${fieldErrors.email ? 'border-red-400' : 'border-slate-200'}`} />{!isLogin && <button type="button" className="rounded-lg bg-navy-50 px-3 text-xs font-bold text-navy-700 disabled:cursor-not-allowed disabled:opacity-50" onClick={handleSendOtp} disabled={!emailReadyForOtp || loading || registrationOtpPending}>{registrationOtpVerified ? 'Verified' : registrationOtpPending ? 'Sent' : 'Send OTP'}</button>}</div>
+            <div className="flex gap-2"><div className="auth-input-wrap min-w-0 flex-1"><input id="email" type="email" name="email" placeholder="you@example.com" value={formData.email} onChange={handleChange} required className={`min-w-0 w-full flex-1 rounded-lg border-2 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-navy-500 focus:bg-white focus:ring-4 focus:ring-navy-100 ${fieldErrors.email ? 'border-red-400' : 'border-slate-200'}`} />{isValidField('email') && <span className="auth-valid-tick" aria-hidden="true">✓</span>}</div>{!isLogin && <button type="button" className="rounded-lg bg-navy-50 px-3 text-xs font-bold text-navy-700 disabled:cursor-not-allowed disabled:opacity-50" onClick={handleSendOtp} disabled={!emailReadyForOtp || loading || registrationOtpPending}>{registrationOtpVerified ? 'Verified' : registrationOtpPending ? 'Sent' : 'Send OTP'}</button>}</div>
             {fieldErrors.email && <div className="mt-1 text-xs font-medium text-red-600">{fieldErrors.email}</div>}
             {!isLogin && !registrationOtpPending && !registrationOtpVerified && <p className="mt-1 text-xs text-slate-500">Enter a valid email to begin registration OTP verification.</p>}
             {!isLogin && (registrationOtpPending || registrationOtpVerified) && (
@@ -1066,15 +1178,17 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
           </motion.div>
 
           <motion.div variants={itemVariants} className={`form-group auth-field auth-field--password ${isLogin ? 'auth-field--login-password' : ''}`}>
-            <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="password">Password</label><input id="password" type="password" name="password" placeholder="Your secure password" value={formData.password} onChange={handleChange} required className={`w-full rounded-lg border-2 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-navy-500 focus:bg-white focus:ring-4 focus:ring-navy-100 ${fieldErrors.password ? 'border-red-400' : 'border-slate-200'}`} />
+            <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="password">Password</label><input id="password" type="password" name="password" placeholder="Your secure password" value={formData.password} onChange={handleChange} onFocus={event => updateCapsLock('password', event)} onKeyDown={event => updateCapsLock('password', event)} onKeyUp={event => updateCapsLock('password', event)} onBlur={() => hideCapsLock('password')} required className={`w-full rounded-lg border-2 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-navy-500 focus:bg-white focus:ring-4 focus:ring-navy-100 ${fieldErrors.password ? 'border-red-400' : 'border-slate-200'}`} />
+            {capsLockFields.password && <div className="auth-caps-lock" role="status">Caps Lock is on</div>}
             {fieldErrors.password && <div className="mt-1 text-xs font-medium text-red-600">{fieldErrors.password}</div>}
           </motion.div>
           {isLogin && <button type="button" className="auth-forgot -mt-2 text-right text-sm font-semibold text-navy-700 hover:text-navy-900" onClick={startPasswordReset}>Forgot Password?</button>}
-          {!isLogin && <motion.div variants={itemVariants} className="form-group auth-field auth-field--confirm-password"><label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="confirm_password">Confirm password</label><input id="confirm_password" type="password" name="confirm_password" placeholder="Repeat your password" value={formData.confirm_password} onChange={handleChange} required className={`w-full rounded-lg border-2 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-navy-500 ${formData.confirm_password && formData.confirm_password !== formData.password ? 'border-red-400' : 'border-slate-200'}`} />{formData.confirm_password && formData.confirm_password !== formData.password && <div className="mt-1 text-xs font-medium text-red-600">Passwords do not match</div>}</motion.div>}
+          {!isLogin && <motion.div variants={itemVariants} className="form-group auth-field auth-field--confirm-password"><label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="confirm_password">Confirm password</label><input id="confirm_password" type="password" name="confirm_password" placeholder="Repeat your password" value={formData.confirm_password} onChange={handleChange} onFocus={event => updateCapsLock('confirm_password', event)} onKeyDown={event => updateCapsLock('confirm_password', event)} onKeyUp={event => updateCapsLock('confirm_password', event)} onBlur={() => hideCapsLock('confirm_password')} required className={`w-full rounded-lg border-2 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-navy-500 ${formData.confirm_password && formData.confirm_password !== formData.password ? 'border-red-400' : 'border-slate-200'}`} />{capsLockFields.confirm_password && <div className="auth-caps-lock" role="status">Caps Lock is on</div>}{formData.confirm_password && formData.confirm_password !== formData.password && <div className="mt-1 text-xs font-medium text-red-600">Passwords do not match</div>}</motion.div>}
           
           {!isLogin && (
             <motion.div variants={itemVariants} className="auth-password-meter text-xs text-slate-500">
               <div className="auth-meter-heading mb-1 flex justify-between"><span>Password strength</span><span className={passwordScore >= 4 ? 'text-mint-700' : passwordScore >= 2 ? 'text-amber-600' : 'text-red-600'}>{passwordScore >= 4 ? 'Strong' : passwordScore >= 2 ? 'Medium' : 'Weak'}</span></div><div className="auth-meter-bars flex h-1.5 gap-1"><span className={`flex-1 rounded-full ${passwordScore >= 1 ? 'bg-red-500' : 'bg-slate-200'}`} /><span className={`flex-1 rounded-full ${passwordScore >= 2 ? 'bg-amber-500' : 'bg-slate-200'}`} /><span className={`flex-1 rounded-full ${passwordScore >= 3 ? 'bg-lime-500' : 'bg-slate-200'}`} /><span className={`flex-1 rounded-full ${passwordScore >= 4 ? 'bg-mint-500' : 'bg-slate-200'}`} /></div><p className="mt-2">Must include uppercase letter, number, and special character.</p>
+              <ul className="auth-password-checklist" aria-label="Password requirements">{passwordRequirements.map(requirement => <li key={requirement.label} className={requirement.met ? 'is-met' : ''}><span aria-hidden="true">{requirement.met ? '✓' : '○'}</span>{requirement.label}</li>)}</ul>
             </motion.div>
           )}
 
@@ -1095,9 +1209,10 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
             {registerStepError && registerStep === 4 && <p className="auth-wizard-error" role="alert">{registerStepError}</p>}
             {!isLogin && (
               <motion.button
-                className="fintech-button auth-submit w-full"
+                className="fintech-button auth-submit cta w-full"
                 type="submit"
                 disabled={loading || !registrationReady}
+                onClick={createRipple}
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.98 }}
               >
@@ -1108,9 +1223,10 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
           </div>}
           
           {isLogin && <motion.button
-            className="fintech-button auth-submit w-full"
+            className="fintech-button auth-submit cta w-full"
             type="submit"
             disabled={loading}
+            onClick={createRipple}
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.98 }}
           >
@@ -1141,6 +1257,7 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
           </span>
         </p>
       </motion.div>
+      </div>
       <div className="hidden bg-navy-50 p-10 lg:flex lg:flex-col lg:justify-center auth-legacy-visual"><div className="max-w-sm"><div className="mb-8 inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-navy-700"><ShieldCheck className="h-4 w-4 text-mint-700" /> Secure workspace</div><h2 className="text-3xl font-bold leading-tight text-navy-900">Your financial picture, protected.</h2><p className="mt-4 leading-7 text-slate-600">A focused workspace for making better tax decisions with confidence.</p><img src={secureFinanceIllustration} alt="Person reviewing a secure financial dashboard" className="mt-8 w-full" /></div></div>
       </div>
       </AuthPageFrame>
