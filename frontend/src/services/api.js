@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+export const resolveApiBaseUrl = (apiBaseUrl) => apiBaseUrl || 'https://fintech-tax-ai.onrender.com/api';
+const API_BASE_URL = resolveApiBaseUrl(process.env.REACT_APP_API_URL);
 export const resolveHealthUrl = (apiBaseUrl) => new URL('/health', apiBaseUrl).toString();
 const HEALTH_URL = resolveHealthUrl(API_BASE_URL);
 const MAX_GET_ATTEMPTS = 3;

@@ -1,4 +1,4 @@
-import api, { healthApi, resolveHealthUrl, setAuthInitialization, warmBackend } from './api';
+import api, { healthApi, resolveApiBaseUrl, resolveHealthUrl, setAuthInitialization, warmBackend } from './api';
 
 const originalAdapter = api.defaults.adapter;
 const originalHealthAdapter = healthApi.defaults.adapter;
@@ -35,6 +35,14 @@ afterEach(() => {
 test('resolves the production API base to the exact Render health endpoint', () => {
   expect(resolveHealthUrl('https://fintech-tax-ai.onrender.com/api'))
     .toBe('https://fintech-tax-ai.onrender.com/health');
+});
+
+test('defaults API requests to the production Render service when no URL is configured', () => {
+  expect(resolveApiBaseUrl('')).toBe('https://fintech-tax-ai.onrender.com/api');
+});
+
+test('uses an explicitly configured local API URL', () => {
+  expect(resolveApiBaseUrl('http://127.0.0.1:8000/api')).toBe('http://127.0.0.1:8000/api');
 });
 
 test('keeps local API base configuration compatible with local health checks', () => {
