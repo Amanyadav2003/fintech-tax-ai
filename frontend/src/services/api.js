@@ -14,6 +14,7 @@ const MAX_GET_ATTEMPTS = 3;
 const RETRYABLE_STATUS_CODES = new Set([502, 503, 504]);
 const AUTH_ROUTES = [
   'auth/login',
+  'auth/google',
   'auth/refresh',
   'auth/register',
   'auth/me',

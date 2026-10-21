@@ -146,6 +146,24 @@ class TestHealthAndStatus:
         assert openapi_response.status_code == 200
 
 
+class TestTrustedHosts:
+    @pytest.mark.parametrize("host", ["localhost", "127.0.0.1", "testserver"])
+    def test_local_hosts_are_allowed(self, client, host):
+        response = client.get("/health", headers={"host": host})
+
+        assert response.status_code == 200
+        assert response.json()["status"] == "healthy"
+
+    def test_unconfigured_host_is_rejected(self, client):
+        response = client.get("/health", headers={"host": "unauthorized.example"})
+
+        assert response.status_code == 400
+        assert response.text == "Invalid host header"
+
+    def test_production_keeps_configured_hosts_restricted(self):
+        assert _get_allowed_hosts("production", "api.example.com") == ["api.example.com"]
+
+
 class TestCorsOrigins:
     def test_google_auth_preflight_allows_localhost_3002(self, client):
         response = client.options(
@@ -171,6 +189,12 @@ class TestCorsOrigins:
         assert production_origin in allowed
         assert "http://localhost:3002" in allowed
         assert "https://unrelated.vercel.app" not in allowed
+        assert "*" not in allowed
+
+    def test_active_production_origin_is_allowed_by_default(self):
+        allowed = _get_allowed_origins("", "")
+
+        assert "https://fintech-tax-ai-psi.vercel.app" in allowed
         assert "*" not in allowed
 
     def test_unconfigured_origin_is_rejected(self, client):

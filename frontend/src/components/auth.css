@@ -482,6 +482,13 @@ body:has(.auth-page) .main-content > div {
   overflow-wrap: anywhere;
 }
 
+.auth-inline-message {
+  margin: 10px 0 0;
+  color: var(--auth-mint);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .auth-wizard-nav {
   display: flex;
   align-items: center;
