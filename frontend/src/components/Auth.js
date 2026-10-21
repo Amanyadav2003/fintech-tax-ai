@@ -25,13 +25,6 @@ const shakeVariants = {
 function AuthPageFrame({ children, className = '' }) {
   return (
     <div className={`auth-page ${className}`}>
-      <div className="auth-page-chips" aria-hidden="true">
-        <span className="auth-chip auth-chip--one">Section 80C <b>₹1.5L</b></span>
-        <span className="auth-chip auth-chip--two">Standard deduction <b>₹75,000</b></span>
-        <span className="auth-chip auth-chip--three">87A rebate <b>Active</b></span>
-        <span className="auth-chip auth-chip--four">HRA <b>Exempt</b></span>
-        <span className="auth-chip auth-chip--five">NPS 80CCD <b>₹50K</b></span>
-      </div>
       <div className="auth-layout">
         <section className="auth-hero" aria-label="TaxMate AI">
           <p className="auth-hero-brand">
@@ -70,6 +63,10 @@ function AuthPageFrame({ children, className = '' }) {
 
 function Auth({ onUserCreated, onVerificationPending, initialVerification = false }) {
   const [isLogin, setIsLogin] = useState(true);
+  const [registerStep, setRegisterStep] = useState(1);
+  const [registerStepDirection, setRegisterStepDirection] = useState('forward');
+  const [registerStepError, setRegisterStepError] = useState('');
+  const [registerStepShake, setRegisterStepShake] = useState(0);
   const [isVerifying, setIsVerifying] = useState(initialVerification);
   const [otp, setOtp] = useState('');
   const [resendCountdown, setResendCountdown] = useState(0);
@@ -117,11 +114,19 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
   ].filter(Boolean).length;
   const emailReadyForOtp = !isLogin && formData.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email);
   const registrationReady = !isLogin && formData.name.trim() && formData.email && formData.password && formData.confirm_password && formData.password === formData.confirm_password && formData.phone && formData.pan && formData.age && employmentType && panAadhaarLinked && termsAccepted && panVerified && emailVerified;
+  const registrationStepNames = ['Personal details', 'Account security', 'Tax profile', 'Finish up'];
+  const registrationStepClass = step => [
+    'auth-register-step',
+    registerStep === step && 'auth-register-step--active',
+    registerStep === step && `auth-register-step--${registerStepDirection}`,
+    registerStep === step && registerStepError && `auth-register-step--shake-${registerStepShake % 2}`,
+  ].filter(Boolean).join(' ');
 
   const verifyPanFormat = () => {
     const valid = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.pan.toUpperCase());
     setPanVerified(valid);
     setPanError(valid ? '' : 'Expected format: ABCDE1234F (5 letters, 4 numbers, 1 letter).');
+    return valid;
   };
 
   const handlePhotoChange = (event) => {
@@ -325,6 +330,7 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
     }
     setFormData(prev => ({ ...prev, [name]: value }));
     setError('');
+    setRegisterStepError('');
     if (name === 'pan') {
       setPanVerified(false);
       setPanError('');
@@ -348,6 +354,72 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
         return updated;
       });
     }
+  };
+
+  const validateRegistrationStep = () => {
+    const fieldsByStep = {
+      1: ['name', 'pan', 'phone', 'age'],
+      2: ['email', 'password', 'confirm_password'],
+      3: [],
+      4: [],
+    };
+
+    for (const name of fieldsByStep[registerStep]) {
+      const value = formData[name];
+      const fieldError = validateField(name, value);
+      if (fieldError) return fieldError;
+
+      const input = document.getElementById(name);
+      if (input?.required && !input.checkValidity()) return input.validationMessage;
+    }
+
+    if (registerStep === 1 && !panVerified && !verifyPanFormat()) {
+      return 'Expected format: ABCDE1234F (5 letters, 4 numbers, 1 letter).';
+    }
+
+    if (registerStep === 2 && !emailVerified) {
+      return registrationOtpPending
+        ? `Enter the 6-digit code sent to ${formData.email}.`
+        : 'Enter a valid email to begin registration OTP verification.';
+    }
+
+    if (registerStep === 2 && formData.confirm_password !== formData.password) {
+      return 'Passwords do not match';
+    }
+
+    if (registerStep === 3 && !employmentType) {
+      const employmentInput = document.querySelector('[name="employment_type"]');
+      if (employmentInput && !employmentInput.checkValidity()) return employmentInput.validationMessage;
+    }
+
+    return '';
+  };
+
+  const handleRegistrationStepSubmit = (event) => {
+    event.preventDefault();
+
+    if (registerStep === 4) {
+      if (registrationReady) finishRegistration();
+      return;
+    }
+
+    const validationMessage = validateRegistrationStep();
+    if (validationMessage) {
+      setRegisterStepError(validationMessage);
+      setRegisterStepShake(value => value + 1);
+      return;
+    }
+
+    setRegisterStepError('');
+    setRegisterStepDirection('forward');
+    setRegisterStep(Math.min(registerStep + 1, 4));
+  };
+
+  const handleRegistrationStepBack = () => {
+    if (registerStep === 1) return;
+    setRegisterStepError('');
+    setRegisterStepDirection('reverse');
+    setRegisterStep(Math.max(registerStep - 1, 1));
   };
 
   const getFieldSpecificMessage = (field, msg) => {
@@ -764,9 +836,23 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
         {error && <div className="auth-alert auth-alert--error mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700" role="alert">{error}</div>}
         {registrationSuccess && <div className="auth-alert auth-alert--success mt-6 rounded-lg border border-mint-500/30 bg-mint-50 px-4 py-3 text-sm font-medium text-mint-700" role="status">{registrationSuccess}</div>}
 
-        <motion.form className="mt-7 space-y-4 text-left auth-account-form" onSubmit={isLogin ? handleSubmit : handleSendOtp} variants={formVariants} initial="hidden" animate={error ? 'shake' : 'visible'}>
+        {!isLogin && (
+          <div className="auth-wizard-progress" aria-label={`Step ${registerStep} of 4: ${registrationStepNames[registerStep - 1]}`}>
+            <div className="auth-wizard-progress-bars" role="progressbar" aria-valuemin="1" aria-valuemax="4" aria-valuenow={registerStep} aria-label="Registration progress">
+              {registrationStepNames.map((name, index) => (
+                <span key={name} className={index + 1 < registerStep ? 'is-complete' : index + 1 === registerStep ? 'is-current' : ''} />
+              ))}
+            </div>
+            <div className="auth-wizard-progress-meta">
+              <span>Step {registerStep} of 4</span>
+              <strong>{registrationStepNames[registerStep - 1]}</strong>
+            </div>
+          </div>
+        )}
+
+        <motion.form className="mt-7 space-y-4 text-left auth-account-form" onSubmit={isLogin ? handleSubmit : handleRegistrationStepSubmit} noValidate={!isLogin} variants={formVariants} initial="hidden" animate={error ? 'shake' : 'visible'}>
           {!isLogin && (
-            <>
+            <div className={registrationStepClass(1)} hidden={registerStep !== 1} aria-hidden={registerStep !== 1}>
               <motion.div variants={itemVariants} className="form-group auth-field auth-field--name">
                 <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="name">Full name</label><input id="name" type="text" name="name" placeholder="Amaan S. Yadav" value={formData.name} onChange={handleChange} required className={`w-full rounded-lg border-2 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-navy-500 focus:bg-white focus:ring-4 focus:ring-navy-100 ${fieldErrors.name ? 'border-red-400' : 'border-slate-200'}`} />
                 {fieldErrors.name && <div className="mt-1 text-xs font-medium text-red-600">{fieldErrors.name}</div>}
@@ -786,9 +872,12 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
                 <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="age">Age</label><input id="age" type="number" name="age" placeholder="30" value={formData.age} onChange={handleChange} required className={`w-full rounded-lg border-2 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-navy-500 focus:bg-white focus:ring-4 focus:ring-navy-100 ${fieldErrors.age ? 'border-red-400' : 'border-slate-200'}`} />
                 {fieldErrors.age && <div className="mt-1 text-xs font-medium text-red-600">{fieldErrors.age}</div>}
               </motion.div>
-            </>
+              <motion.div variants={itemVariants} className="auth-photo-block flex flex-wrap items-center gap-3"><div className="auth-photo-preview relative h-20 w-20 overflow-hidden rounded-full border-2 border-slate-200 bg-slate-100">{profilePhotoPreview ? <img src={profilePhotoPreview} alt="Profile preview" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-2xl">👤</div>}<Camera className="absolute bottom-0 right-0 rounded-full bg-navy-700 p-1 text-white" size={24} /></div><label className="auth-photo-action cursor-pointer rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-navy-700">Take Photo<input type="file" accept="image/*" capture="environment" onChange={handlePhotoChange} className="hidden" /></label><label className="auth-photo-action cursor-pointer rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-navy-700">Choose from Gallery<input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" /></label><span className="auth-photo-note w-full text-xs text-slate-500">Optional. Images only, maximum 2MB.</span></motion.div>
+              {registerStepError && registerStep === 1 && <p className="auth-wizard-error" role="alert">{registerStepError}</p>}
+            </div>
           )}
 
+          <div className={isLogin ? 'auth-login-fields' : registrationStepClass(2)} hidden={!isLogin && registerStep !== 2} aria-hidden={!isLogin && registerStep !== 2}>
           <motion.div variants={itemVariants} className="form-group auth-field auth-field--email">
             <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="email">Email address</label>
             <div className="flex gap-2"><input id="email" type="email" name="email" placeholder="you@example.com" value={formData.email} onChange={handleChange} required className={`min-w-0 flex-1 rounded-lg border-2 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-navy-500 focus:bg-white focus:ring-4 focus:ring-navy-100 ${fieldErrors.email ? 'border-red-400' : 'border-slate-200'}`} />{!isLogin && <button type="button" className="rounded-lg bg-navy-50 px-3 text-xs font-bold text-navy-700 disabled:cursor-not-allowed disabled:opacity-50" onClick={handleSendOtp} disabled={!emailReadyForOtp || loading || registrationOtpPending}>{registrationOtpVerified ? 'Verified' : registrationOtpPending ? 'Sent' : 'Send OTP'}</button>}</div>
@@ -827,27 +916,49 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
             </motion.div>
           )}
 
-          {!isLogin && <>
-            <motion.div variants={itemVariants} className="form-group auth-field auth-field--employment"><span className="mb-1.5 block text-sm font-semibold text-slate-700">Employment type</span><div className="auth-employment-grid flex flex-wrap gap-4">{['Salaried', 'Self-employed', 'Business'].map(option => <label key={option} className="auth-employment-option flex items-center gap-2 text-sm text-slate-600"><input type="radio" name="employment_type" value={option} checked={employmentType === option} onChange={(e) => setEmploymentType(e.target.value)} /><span>{option}</span></label>)}</div></motion.div>
+          {registerStepError && registerStep === 2 && <p className="auth-wizard-error" role="alert">{registerStepError}</p>}
+          </div>
+
+          {!isLogin && <div className={registrationStepClass(3)} hidden={registerStep !== 3} aria-hidden={registerStep !== 3}>
+            <motion.div variants={itemVariants} className="form-group auth-field auth-field--employment"><span className="mb-1.5 block text-sm font-semibold text-slate-700">Employment type</span><div className="auth-employment-grid flex flex-wrap gap-4">{['Salaried', 'Self-employed', 'Business'].map(option => <label key={option} className="auth-employment-option flex items-center gap-2 text-sm text-slate-600"><input type="radio" name="employment_type" value={option} checked={employmentType === option} required={option === 'Salaried'} onChange={(e) => setEmploymentType(e.target.value)} /><span>{option}</span></label>)}</div></motion.div>
             <motion.div variants={itemVariants} className="form-group auth-field auth-field--financial-year"><label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="financial_year">Financial year</label><select id="financial_year" value="FY 2025-26 (AY 2026-27)" disabled className="w-full rounded-lg border-2 border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-600"><option>FY 2025-26 (AY 2026-27)</option></select></motion.div>
             <motion.div variants={itemVariants} className="form-group auth-field auth-field--employer"><label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="employer_name">Employer / company name <span className="font-normal text-slate-400">(optional)</span></label><input id="employer_name" type="text" name="employer_name" maxLength="150" placeholder="Your company" value={formData.employer_name} onChange={handleChange} className="w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-navy-500" /></motion.div>
+            {registerStepError && registerStep === 3 && <p className="auth-wizard-error" role="alert">{registerStepError}</p>}
+          </div>}
+
+          {!isLogin && <div className={registrationStepClass(4)} hidden={registerStep !== 4} aria-hidden={registerStep !== 4}>
             <motion.div variants={itemVariants} className="auth-check-row auth-check-row--aadhaar"><label className="flex items-start gap-3 text-sm leading-6 text-slate-600"><input type="checkbox" checked={panAadhaarLinked} onChange={(e) => setPanAadhaarLinked(e.target.checked)} className="mt-1" /> <span>My PAN is linked with Aadhaar as required by the Income Tax Department.<span className="block text-xs text-slate-400">Self-declaration only; no government database verification is performed.</span></span></label></motion.div>
             <motion.div variants={itemVariants} className="auth-check-row auth-check-row--reminders"><label className="flex items-center gap-3 text-sm text-slate-600"><input type="checkbox" checked={emailRemindersEnabled} onChange={(e) => setEmailRemindersEnabled(e.target.checked)} />Notify me about tax filing deadlines and updates</label></motion.div>
-            <motion.div variants={itemVariants} className="auth-photo-block flex flex-wrap items-center gap-3"><div className="auth-photo-preview relative h-20 w-20 overflow-hidden rounded-full border-2 border-slate-200 bg-slate-100">{profilePhotoPreview ? <img src={profilePhotoPreview} alt="Profile preview" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-2xl">👤</div>}<Camera className="absolute bottom-0 right-0 rounded-full bg-navy-700 p-1 text-white" size={24} /></div><label className="auth-photo-action cursor-pointer rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-navy-700">Take Photo<input type="file" accept="image/*" capture="environment" onChange={handlePhotoChange} className="hidden" /></label><label className="auth-photo-action cursor-pointer rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-navy-700">Choose from Gallery<input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" /></label><span className="auth-photo-note w-full text-xs text-slate-500">Optional. Images only, maximum 2MB.</span></motion.div>
             <motion.div variants={itemVariants} className="auth-check-row auth-check-row--terms"><label className="flex items-start gap-3 text-sm leading-6 text-slate-600"><input type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} className="mt-1" /> <span>I agree to the <a className="font-semibold text-navy-700" href="/terms">Terms of Service</a> and <a className="font-semibold text-navy-700" href="/privacy">Privacy Policy</a>.</span></label></motion.div>
-          </>}
+            {registerStepError && registerStep === 4 && <p className="auth-wizard-error" role="alert">{registerStepError}</p>}
+            {!isLogin && (
+              <motion.button
+                className="fintech-button auth-submit w-full"
+                type="submit"
+                disabled={loading || !registrationReady}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                {loading && <span className="auth-submit-spinner" aria-hidden="true" />}
+                <span>{loading ? 'Please wait...' : 'Create account'}</span>
+              </motion.button>
+            )}
+          </div>}
           
-          <motion.button 
+          {isLogin && <motion.button
             className="fintech-button auth-submit w-full"
-            type={isLogin ? 'submit' : 'button'} 
-            disabled={loading || (!isLogin && (!registrationReady || !emailVerified))}
-            onClick={isLogin ? undefined : finishRegistration}
+            type="submit"
+            disabled={loading}
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.98 }}
           >
             {loading && <span className="auth-submit-spinner" aria-hidden="true" />}
-            <span>{loading ? 'Please wait...' : (isLogin ? 'Log in' : 'Create account')}</span>
-          </motion.button>
+            <span>{loading ? 'Please wait...' : 'Log in'}</span>
+          </motion.button>}
+          {!isLogin && <div className="auth-wizard-nav">
+            <button type="button" className="auth-wizard-back" onClick={handleRegistrationStepBack} disabled={registerStep === 1}>Back</button>
+            {registerStep < 4 && <button type="submit" className="auth-wizard-next">{'Next'}</button>}
+          </div>}
         </motion.form>
 
         <p className="auth-switch-prompt mt-7 text-center text-sm text-slate-500">

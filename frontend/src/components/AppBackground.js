@@ -1,22 +1,42 @@
-import React from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import React, { useMemo } from 'react';
+
+const taxChips = [
+  ['Section 80C', '₹1.5L'],
+  ['Standard deduction', '₹75,000'],
+  ['87A rebate', 'Active'],
+  ['HRA', 'Exempt'],
+  ['NPS 80CCD', '₹50K'],
+];
+
+const createCoinStyle = () => {
+  const scale = 0.6 + Math.random() * 0.8;
+  const duration = 12 + Math.random() * 10;
+
+  return {
+    left: `${Math.random() * 96}%`,
+    width: `${34 * scale}px`,
+    height: `${34 * scale}px`,
+    fontSize: `${16 * scale}px`,
+    animationDuration: `${duration}s`,
+    animationDelay: `-${Math.random() * duration}s`,
+    '--coin-static-top': `${10 + Math.random() * 80}%`,
+  };
+};
 
 function AppBackground({ variant = 'subtle', children }) {
-  const prefersReducedMotion = useReducedMotion();
   const isVibrant = variant === 'vibrant';
+  const coins = useMemo(() => Array.from({ length: 14 }, createCoinStyle), []);
 
   return (
     <div className={`app-background app-background-${variant} relative isolate min-h-screen overflow-hidden bg-slate-50`}>
-      <div className="ambient-effects" aria-hidden="true">
-        <div className="ambient-orbit"><i /><i /></div>
-        {Array.from({ length: 12 }, (_, index) => <span className="ambient-coin" key={index}>₹</span>)}
+      <div className="aurora" aria-hidden="true"><i /><i /><i /></div>
+      <div className="fx" aria-hidden="true">
+        <div className="orbit"><i /><i /></div>
+        {isVibrant && taxChips.map(([label, value], index) => (
+          <span className={`chip c${index + 1}`} key={label}>{label} <b>{value}</b></span>
+        ))}
+        {coins.map((style, index) => <span className="coin" key={index} style={style}>₹</span>)}
       </div>
-      <motion.div
-        aria-hidden="true"
-        className={`app-background-glow pointer-events-none absolute -inset-[25%] z-0 ${isVibrant ? '' : 'opacity-90'}`}
-        animate={prefersReducedMotion ? undefined : { x: ['-2%', '3%', '-2%'], y: ['-1%', '2%', '-1%'], scale: [1, 1.04, 1] }}
-        transition={prefersReducedMotion ? undefined : { duration: isVibrant ? 18 : 42, repeat: Infinity, ease: 'easeInOut' }}
-      />
       <div className="relative z-10">{children}</div>
     </div>
   );
