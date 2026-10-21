@@ -1,6 +1,12 @@
 import axios from 'axios';
 
-export const resolveApiBaseUrl = (apiBaseUrl) => apiBaseUrl || 'https://fintech-tax-ai.onrender.com/api';
+export const resolveApiBaseUrl = (apiBaseUrl, environment = process.env.NODE_ENV) => (
+  apiBaseUrl || (
+    environment === 'development'
+      ? 'http://localhost:8000/api'
+      : 'https://fintech-tax-ai.onrender.com/api'
+  )
+);
 const API_BASE_URL = resolveApiBaseUrl(process.env.REACT_APP_API_URL);
 export const resolveHealthUrl = (apiBaseUrl) => new URL('/health', apiBaseUrl).toString();
 const HEALTH_URL = resolveHealthUrl(API_BASE_URL);

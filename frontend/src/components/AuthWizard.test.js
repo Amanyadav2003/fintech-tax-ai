@@ -1,6 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import Auth from './Auth';
+import Auth, { isValidGoogleClientId } from './Auth';
 import api from '../services/api';
 
 jest.mock('../services/api', () => ({
@@ -158,7 +158,7 @@ test('renders the configured Google sign-in option on Login and Register', async
     .mockImplementation(function getGoogleButtonBounds() {
       return this.dataset?.testid === 'google-signin' ? { width: 320 } : { width: 0 };
     });
-  process.env.REACT_APP_GOOGLE_CLIENT_ID = 'test-google-client-id';
+  process.env.REACT_APP_GOOGLE_CLIENT_ID = '123456789012-test.apps.googleusercontent.com';
   window.google = { accounts: { id: { initialize, renderButton } } };
 
   try {
@@ -170,7 +170,7 @@ test('renders the configured Google sign-in option on Login and Register', async
     await waitFor(() => expect(renderButton).toHaveBeenCalledTimes(2));
     expect(screen.getByTestId('google-signin')).toBeTruthy();
     expect(initialize).toHaveBeenCalledWith(expect.objectContaining({
-      client_id: 'test-google-client-id',
+      client_id: '123456789012-test.apps.googleusercontent.com',
       ux_mode: 'popup',
     }));
     expect(renderButton).toHaveBeenLastCalledWith(
@@ -185,4 +185,10 @@ test('renders the configured Google sign-in option on Login and Register', async
     if (originalGoogle === undefined) delete window.google;
     else window.google = originalGoogle;
   }
+});
+
+test('only accepts a Google Web OAuth client ID format', () => {
+  expect(isValidGoogleClientId('123456789012-test.apps.googleusercontent.com')).toBe(true);
+  expect(isValidGoogleClientId('not-a-client-id')).toBe(false);
+  expect(isValidGoogleClientId('123456789012-test.apps.googleusercontent.com.evil.test')).toBe(false);
 });

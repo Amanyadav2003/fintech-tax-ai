@@ -37,8 +37,12 @@ test('resolves the production API base to the exact Render health endpoint', () 
     .toBe('https://fintech-tax-ai.onrender.com/health');
 });
 
-test('defaults API requests to the production Render service when no URL is configured', () => {
-  expect(resolveApiBaseUrl('')).toBe('https://fintech-tax-ai.onrender.com/api');
+test('defaults development API requests to the local FastAPI service when no URL is configured', () => {
+  expect(resolveApiBaseUrl('', 'development')).toBe('http://localhost:8000/api');
+});
+
+test('defaults production API requests to the Render service when no URL is configured', () => {
+  expect(resolveApiBaseUrl('', 'production')).toBe('https://fintech-tax-ai.onrender.com/api');
 });
 
 test('uses an explicitly configured local API URL', () => {
@@ -46,7 +50,7 @@ test('uses an explicitly configured local API URL', () => {
 });
 
 test('keeps local API base configuration compatible with local health checks', () => {
-  expect(resolveHealthUrl('http://localhost:5000/api')).toBe('http://localhost:5000/health');
+  expect(resolveHealthUrl('http://localhost:8000/api')).toBe('http://localhost:8000/health');
 });
 
 test.each([502, 503, 504])('retries a GET after HTTP %i and accepts a successful response', async (status) => {

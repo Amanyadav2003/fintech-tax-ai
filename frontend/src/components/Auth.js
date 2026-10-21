@@ -23,10 +23,15 @@ const shakeVariants = {
 };
 
 const GOOGLE_IDENTITY_SCRIPT = 'https://accounts.google.com/gsi/client';
+const GOOGLE_CLIENT_ID_PATTERN = /^\d+-[A-Za-z0-9_-]+\.apps\.googleusercontent\.com$/;
 let googleIdentityScriptPromise;
 let googleIdentityInitialized = false;
 let googleConfigurationWarningShown = false;
 let activeGoogleCredentialHandler;
+
+export const isValidGoogleClientId = clientId => (
+  typeof clientId === 'string' && GOOGLE_CLIENT_ID_PATTERN.test(clientId.trim())
+);
 
 const loadGoogleIdentityScript = () => {
   if (window.google?.accounts?.id) return Promise.resolve(window.google);
@@ -132,7 +137,10 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
   const googleRequestInFlight = useRef(false);
   const googleCredentialHandlerRef = useRef(null);
   const googleCredentialDispatcher = useRef(response => googleCredentialHandlerRef.current?.(response));
-  const googleClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID || '';
+  const configuredGoogleClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID || '';
+  const googleClientId = isValidGoogleClientId(configuredGoogleClientId)
+    ? configuredGoogleClientId.trim()
+    : '';
 
   const passwordScore = formData.password.length === 0 ? 0 : [
     formData.password.length >= 8,
