@@ -111,7 +111,15 @@ function App() {
       const warningDelay = Math.max(0, expiresAt - Date.now() - 120000);
       const expiryDelay = Math.max(0, expiresAt - Date.now());
       warningTimer = window.setTimeout(() => setSessionNotice('warning'), warningDelay);
-      expiryTimer = window.setTimeout(() => setSessionNotice('expired'), expiryDelay);
+      expiryTimer = window.setTimeout(() => {
+        api.post('auth/refresh')
+          .then(() => {
+            setSessionNotice('');
+            const next = decodeExpiry();
+            if (next && next > expiresAt) schedule();
+          })
+          .catch(() => setSessionNotice('expired'));
+      }, expiryDelay);
     };
     const refreshOnActivity = () => {
       if (!userEmail || refreshInFlight || Date.now() - lastActivityRefresh < 30000) return;
