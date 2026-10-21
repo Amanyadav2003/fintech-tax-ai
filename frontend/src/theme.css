@@ -53,64 +53,74 @@ html,body,.card,.nav,input,select,button { transition:background-color .35s,colo
 }
 .app-background { isolation:isolate; }
 html:not(.dark) .app-background,html.dark .app-background { background:transparent!important; }
-.ambient-effects {
-  position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none;
+html:not(.dark) .app-background:has(.auth-page),html.dark .app-background:has(.auth-page) { background:#080D1C!important; }
+.aurora,.fx { position:fixed; inset:0; z-index:0; pointer-events:none; }
+.aurora { overflow:hidden; }
+.aurora i {
+  position:absolute; width:46vw; height:46vw; border-radius:50%; filter:blur(90px);
+  opacity:.5; animation:taxmate-drift 18s ease-in-out infinite alternate;
 }
-.ambient-orbit {
+.aurora i:nth-child(1) { left:-10vw; top:-12vw; background:var(--violet); }
+.aurora i:nth-child(2) {
+  right:-8vw; bottom:-10vw; width:38vw; height:38vw; background:#0FA67A;
+  opacity:.38; animation-delay:-6s;
+}
+.aurora i:nth-child(3) {
+  left:42vw; top:30vh; width:26vw; height:26vw; background:var(--gold);
+  opacity:.14; animation-delay:-11s;
+}
+.aurora::after {
+  content:""; position:absolute; inset:0;
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:56px 56px; mask-image:radial-gradient(ellipse at 40% 50%,#000 10%,transparent 70%); opacity:.5;
+}
+.fx { overflow:hidden; }
+.orbit {
   position:absolute; right:2vw; top:50%; width:min(640px,48vw); aspect-ratio:1; transform:translateY(-50%);
 }
-.ambient-orbit i {
-  position:absolute; inset:0; border:1px dashed rgba(15,166,122,.24); border-radius:50%;
+.orbit i {
+  position:absolute; inset:0; border:1px dashed rgba(52,229,168,.3); border-radius:50%;
   animation:taxmate-orbit 40s linear infinite;
 }
-.ambient-orbit i:nth-child(2) { inset:12%; border-color:rgba(183,121,31,.25); animation-duration:28s; animation-direction:reverse; }
-.ambient-orbit i::after {
+.orbit i:nth-child(2) { inset:12%; border-color:rgba(240,195,106,.3); animation-duration:28s; animation-direction:reverse; }
+.orbit i::after {
   content:""; position:absolute; top:-5px; left:50%; width:10px; height:10px; border-radius:50%;
-  background:var(--mint); box-shadow:0 0 18px var(--mint);
+  background:var(--mint-soft); box-shadow:0 0 18px var(--mint-soft);
 }
-.ambient-orbit i:nth-child(2)::after { background:var(--gold); box-shadow:0 0 18px var(--gold); }
-.ambient-coin {
-  --coin-duration:16s;
-  position:absolute; bottom:-50px; display:grid; place-items:center; width:28px; height:28px; border-radius:50%;
-  color:#3a2a05; font:700 14px var(--serif);
+.orbit i:nth-child(2)::after { background:var(--gold-soft); box-shadow:0 0 18px var(--gold-soft); }
+.chip {
+  position:absolute; display:flex; align-items:center; gap:8px; padding:10px 14px;
+  border:1px solid var(--line); border-radius:14px; background:rgba(255,255,255,.06);
+  box-shadow:0 18px 40px -20px rgba(0,0,0,.7); color:#EEF0F8; font-size:13px;
+  white-space:nowrap; -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
+  animation:taxmate-bob 6s ease-in-out infinite;
+}
+.chip b { color:var(--mint-soft); font:700 15px var(--serif); }
+.chip.c1 { top:9%; right:7%; }
+.chip.c2 { top:46%; left:51%; animation-delay:-2s; }
+.chip.c3 { right:9%; bottom:9%; animation-delay:-4s; }
+.chip.c4 { top:7%; left:46%; animation-delay:-1s; }
+.chip.c5 { bottom:7%; left:40%; animation-delay:-3s; }
+.coin {
+  --coin-opacity:.42;
+  position:absolute; bottom:-60px; display:grid; place-items:center; width:34px; height:34px;
+  border-radius:50%; color:#3a2a05; font:700 16px var(--serif);
   background:radial-gradient(circle at 30% 30%,#fff2c4,var(--gold-soft) 55%,#a77a23);
-  box-shadow:0 0 18px rgba(240,195,106,.3);
-  opacity:0; animation:taxmate-coin var(--coin-duration) linear infinite;
+  box-shadow:0 0 24px rgba(240,195,106,.45); opacity:0; animation:taxmate-coin 16s linear infinite;
 }
-.ambient-coin:nth-of-type(1) { left:5%; animation-delay:-3s; --coin-duration:18s; }
-.ambient-coin:nth-of-type(2) { left:13%; animation-delay:-11s; --coin-duration:14s; }
-.ambient-coin:nth-of-type(3) { left:24%; animation-delay:-7s; --coin-duration:20s; }
-.ambient-coin:nth-of-type(4) { left:34%; animation-delay:-14s; --coin-duration:16s; }
-.ambient-coin:nth-of-type(5) { left:45%; animation-delay:-5s; --coin-duration:19s; }
-.ambient-coin:nth-of-type(6) { left:56%; animation-delay:-16s; --coin-duration:13s; }
-.ambient-coin:nth-of-type(7) { left:66%; animation-delay:-9s; --coin-duration:21s; }
-.ambient-coin:nth-of-type(8) { left:76%; animation-delay:-2s; --coin-duration:15s; }
-.ambient-coin:nth-of-type(9) { left:86%; animation-delay:-12s; --coin-duration:17s; }
-.ambient-coin:nth-of-type(10) { left:94%; animation-delay:-6s; --coin-duration:22s; }
-.ambient-coin:nth-of-type(11) { left:39%; animation-delay:-18s; --coin-duration:15s; }
-.ambient-coin:nth-of-type(12) { left:71%; animation-delay:-4s; --coin-duration:20s; }
+@keyframes taxmate-drift { to { transform:translate(8vw,6vh) scale(1.15); } }
 @keyframes taxmate-orbit { to { transform:rotate(360deg); } }
+@keyframes taxmate-bob { 50% { transform:translateY(-16px) rotate(1.5deg); } }
 @keyframes taxmate-coin {
   0% { transform:translateY(0) rotateY(0); opacity:0; }
-  12%,88% { opacity:.42; }
+  10%,90% { opacity:var(--coin-opacity); }
   100% { transform:translateY(-115vh) rotateY(720deg); opacity:0; }
 }
-.app-background-subtle .ambient-orbit { opacity:.35; }
-.app-background-subtle .ambient-coin { opacity:.35; box-shadow:0 0 9px rgba(240,195,106,.16); }
-.app-background::after {
-  content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
-  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
-  background-size:56px 56px; mask-image:radial-gradient(ellipse at 40% 35%,#000 8%,transparent 72%); opacity:.5;
-}
-.app-background-glow {
-  position:fixed!important; inset:-12%!important; z-index:0!important; width:auto!important; height:auto!important;
-  opacity:.55; filter:blur(76px);
-  background-image:radial-gradient(circle at 18% 18%,rgba(107,92,255,.26),transparent 34%),
-    radial-gradient(circle at 78% 72%,rgba(15,166,122,.20),transparent 30%),
-    radial-gradient(circle at 52% 46%,rgba(240,195,106,.10),transparent 32%)!important;
-}
-html.dark .app-background-glow { opacity:.68; }
-.app-background>.relative.z-10 { z-index:1; }
+.app-background-subtle .aurora i { opacity:.16; }
+.app-background-subtle .orbit { opacity:.35; }
+.app-background-subtle .chip { opacity:.65; }
+.app-background-subtle .coin { --coin-opacity:.22; box-shadow:0 0 9px rgba(240,195,106,.16); }
+.app-background>.relative.z-10 { position:relative; z-index:1; }
 
 @property --taxmate-angle { syntax:'<angle>'; inherits:false; initial-value:0deg; }
 @keyframes taxmate-spin { to { --taxmate-angle:360deg; } }
@@ -559,16 +569,9 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
   .income-type-option { min-height:150px; }
   .landing-page>section:nth-of-type(1)>div:last-child { min-height:0; padding-top:64px; padding-bottom:64px; }
   .landing-overview>div:nth-child(3),.landing-overview>div:nth-child(4),.landing-overview>div:nth-child(5) { display:none; }
-  .ambient-effects { z-index:0; }
   .app-background>.relative.z-10 { position:relative; z-index:1; }
-  .ambient-orbit { opacity:.35; }
-  .ambient-coin { animation-name:taxmate-coin-mobile; }
-  .ambient-coin:nth-of-type(even) { display:none; }
-  @keyframes taxmate-coin-mobile {
-    0% { transform:translateY(0) rotateY(0); opacity:0; }
-    12%,88% { opacity:.35; }
-    100% { transform:translateY(-115vh) rotateY(720deg); opacity:0; }
-  }
+  .orbit { opacity:.35; }
+  .chip { display:none; }
 }
 @media (max-width:700px) {
   .landing-page nav.landing-nav>div { padding-top:12px!important; padding-bottom:12px!important; }
@@ -614,4 +617,10 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 }
 @media (prefers-reduced-motion:reduce) {
   *,*::before,*::after { animation:none!important; transition:none!important; scroll-behavior:auto!important; }
+  .aurora i { animation:none!important; opacity:.12; }
+  .orbit i,.chip { animation:none!important; }
+  .coin {
+    animation:none!important; top:var(--coin-static-top); bottom:auto;
+    opacity:.14!important;
+  }
 }

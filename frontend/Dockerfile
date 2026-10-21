@@ -2,6 +2,9 @@ FROM node:18-alpine AS build
 
 WORKDIR /app
 
+ARG REACT_APP_GOOGLE_CLIENT_ID
+ENV REACT_APP_GOOGLE_CLIENT_ID=${REACT_APP_GOOGLE_CLIENT_ID}
+
 COPY package*.json ./
 
 RUN npm install

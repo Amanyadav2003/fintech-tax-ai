@@ -4,6 +4,7 @@ Authentication routes and JWT management
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request, UploadFile, File
 from fastapi.responses import JSONResponse
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 import secrets
@@ -13,6 +14,8 @@ import hashlib
 import hmac
 from pathlib import Path
 from uuid import uuid4
+from google.auth.transport.requests import Request as GoogleRequest
+from google.oauth2 import id_token
 
 from ..utils.security import SecurityManager
 from ..utils.logging_config import logger
@@ -90,6 +93,73 @@ def _issue_tokens(user: User) -> JSONResponse:
     response.set_cookie("refresh_token", refresh_token, httponly=SESSION_COOKIE_HTTPONLY, secure=SESSION_COOKIE_SECURE,
                         samesite=SESSION_COOKIE_SAMESITE, max_age=604800, path="/")
     return response
+
+
+@router.post("/google")
+@limiter.limit("10/minute")
+def google_login(request: Request, payload: dict, db: Session = Depends(get_db)):
+    """Authenticate a user with a Google Identity Services ID token."""
+    google_client_id = os.getenv("GOOGLE_CLIENT_ID")
+    if not google_client_id:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Google sign-in is not configured"
+        )
+
+    try:
+        claims = id_token.verify_oauth2_token(
+            payload.get("credential", ""),
+            GoogleRequest(),
+            google_client_id
+        )
+        email = claims.get("email")
+        if claims.get("email_verified") is not True or not isinstance(email, str) or not email.strip():
+            raise ValueError("Google identity is not verified")
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Google credential"
+        )
+
+    email = _normalize_email(email)
+    user = db.query(User).filter(func.lower(User.email) == email).first()
+
+    if user:
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User account is disabled"
+            )
+        if not user.email_verified:
+            user.email_verified = True
+            user.password_hash = SecurityManager.hash_password(secrets.token_urlsafe(32))
+            db.commit()
+            db.refresh(user)
+        return _issue_tokens(user)
+
+    user = User(
+        email=email,
+        name=(claims.get("name") or email.split("@", 1)[0]),
+        phone=None,
+        pan=None,
+        password_hash=SecurityManager.hash_password(secrets.token_urlsafe(32)),
+        age=None,
+        state="Maharashtra",
+        is_active=True,
+        is_verified=True,
+        email_verified=True,
+        otp_code=None,
+        otp_expires_at=None,
+        employment_type="Salaried",
+        pan_aadhaar_linked=False,
+        financial_year="FY 2025-26 (AY 2026-27)",
+        employer_name=None,
+        email_reminders_enabled=True
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return _issue_tokens(user)
 
 
 @router.post("/send-registration-otp")
