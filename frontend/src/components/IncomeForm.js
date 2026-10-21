@@ -32,6 +32,8 @@ const fieldsByType = {
   'Self-employed': ['professional_fees', 'interest', 'dividend', 'rental_income', 'other_sources', 'tds_deducted'],
 };
 
+function formatMoney(value) { return Number(value || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 }); }
+
 function IncomeForm({ incomeType, onIncomeSubmit, userEmail, documentValues = {} }) {
   const [income, setIncome] = useState(initialIncome);
   const [mismatchDismissed, setMismatchDismissed] = useState(false);
@@ -74,8 +76,8 @@ function IncomeForm({ incomeType, onIncomeSubmit, userEmail, documentValues = {}
     >
       <h2>{incomeType} Income Details</h2>
       <p className="subtitle">Enter your annual income from various sources for FY 2025-26 (AY 2026-27).</p>
-      <div className="running-total"><span>Total Gross Income</span><strong>₹ {Object.entries(income).filter(([key]) => !['tds_deducted', 'hra_received'].includes(key)).reduce((total, [, value]) => total + (parseFloat(value) || 0), 0).toLocaleString('en-IN')}</strong></div>
-      {salaryMismatch && !mismatchDismissed && <div className="document-warning" role="status"><strong>Please confirm your salary</strong><p>Form 16 shows ₹{sourceSalary.toLocaleString('en-IN')} for salary, but you entered ₹{enteredSalary.toLocaleString('en-IN')} - please confirm which is correct.</p><div><button type="button" onClick={() => { setIncome(previous => ({ ...previous, salary: String(sourceSalary) })); setMismatchDismissed(true); }}>Use Form 16 value</button><button type="button" onClick={() => setMismatchDismissed(true)}>Keep entered value</button></div></div>}
+      <div className="running-total"><span>Total Gross Income</span><strong>₹ {formatMoney(Object.entries(income).filter(([key]) => !['tds_deducted', 'hra_received'].includes(key)).reduce((total, [, value]) => total + (parseFloat(value) || 0), 0))}</strong></div>
+      {salaryMismatch && !mismatchDismissed && <div className="document-warning" role="status"><strong>Please confirm your salary</strong><p>Form 16 shows ₹{formatMoney(sourceSalary)} for salary, but you entered ₹{formatMoney(enteredSalary)} - please confirm which is correct.</p><div><button type="button" onClick={() => { setIncome(previous => ({ ...previous, salary: String(sourceSalary) })); setMismatchDismissed(true); }}>Use Form 16 value</button><button type="button" onClick={() => setMismatchDismissed(true)}>Keep entered value</button></div></div>}
 
       <motion.form onSubmit={handleSubmit} variants={formVariants} initial="hidden" animate="visible">
         {visibleFields.includes('salary') && <IncomeField name="salary" label="Salary Income" value={income.salary} onChange={handleChange} />}

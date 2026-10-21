@@ -4,7 +4,7 @@ import api from '../services/api';
 import './history.css';
 import LoadingSkeleton from './LoadingSkeleton';
 
-function money(value) { return `₹${Number(value || 0).toLocaleString('en-IN')}`; }
+function money(value) { return `₹${Number(value || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`; }
 function History({ onBack, onViewResult }) {
   const [items, setItems] = useState([]); const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState([]);

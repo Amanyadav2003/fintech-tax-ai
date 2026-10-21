@@ -49,7 +49,7 @@ function Results({ analysis }) {
 
       <motion.div className="summary-card" variants={itemVariants}>
         <h3>Recommended Regime: <span style={{fontWeight: 800}}>{tax_analysis.recommended_regime.toUpperCase()}</span></h3>
-        <div className="amount">₹ {Math.abs(tax_analysis.potential_savings).toLocaleString('en-IN')}</div>
+        <div className="amount">₹ {formatMoney(Math.abs(tax_analysis.potential_savings))}</div>
         <h3>Potential Annual Savings</h3>
       </motion.div>
       {tax_analysis.legacy_calculation_warning && <motion.div className="legacy-warning" variants={itemVariants} role="alert"><strong>Pre-fix calculation notice</strong><p>This saved analysis was calculated before the tax rules were corrected. Its stored totals are preserved; run a new FY 2025-26 analysis to see corrected totals.</p></motion.div>}
@@ -65,13 +65,13 @@ function Results({ analysis }) {
           <h2>Tax Computation Summary</h2>
         </div>
         <div className="result-content">
-          <p><strong>Gross Income:</strong> ₹ {tax_analysis.gross_income.toLocaleString('en-IN')}</p>
-          <p><strong>Total Deductions:</strong> ₹ {tax_analysis.total_deductions.toLocaleString('en-IN')}</p>
-          <p><strong>Old Regime taxable income:</strong> ₹ {(tax_analysis.old_regime_taxable_income ?? tax_analysis.taxable_income).toLocaleString('en-IN')}</p>
-          <p><strong>New Regime taxable income:</strong> ₹ {(tax_analysis.new_regime_taxable_income ?? tax_analysis.taxable_income).toLocaleString('en-IN')}</p>
+          <p><strong>Gross Income:</strong> ₹ {formatMoney(tax_analysis.gross_income)}</p>
+          <p><strong>Total Deductions:</strong> ₹ {formatMoney(tax_analysis.total_deductions)}</p>
+          <p><strong>Old Regime taxable income:</strong> ₹ {formatMoney(tax_analysis.old_regime_taxable_income ?? tax_analysis.taxable_income)}</p>
+          <p><strong>New Regime taxable income:</strong> ₹ {formatMoney(tax_analysis.new_regime_taxable_income ?? tax_analysis.taxable_income)}</p>
           <hr style={{margin: '20px 0', border: '0', borderTop: '1px solid var(--gray-lighter)'}} />
-          <p><strong>Tax (Old Regime):</strong> ₹ {tax_analysis.old_regime_tax.toLocaleString('en-IN')}</p>
-          <p><strong>Tax (New Regime):</strong> ₹ {tax_analysis.new_regime_tax.toLocaleString('en-IN')}</p>
+          <p><strong>Tax (Old Regime):</strong> ₹ {formatMoney(tax_analysis.old_regime_tax)}</p>
+          <p><strong>Tax (New Regime):</strong> ₹ {formatMoney(tax_analysis.new_regime_tax)}</p>
         </div>
       </motion.div>
 
@@ -96,7 +96,7 @@ function Results({ analysis }) {
               </ul>
             </>
           )}
-          <p><strong>Potential Penalty if Audited:</strong> ₹ {risk_analysis.penalty_if_audited.toLocaleString('en-IN')}</p>
+          <p><strong>Potential Penalty if Audited:</strong> ₹ {formatMoney(risk_analysis.penalty_if_audited)}</p>
         </div>
       </motion.div>
 

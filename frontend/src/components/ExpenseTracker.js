@@ -26,7 +26,7 @@ export function createExpenseCsv(expenses) {
   return `\uFEFF${['amount,category,description,date', ...rows].join('\r\n')}`;
 }
 const currentMonth = monthKey(new Date());
-function money(value) { return `₹${Number(value || 0).toLocaleString('en-IN')}`; }
+function money(value) { return `₹${Number(value || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`; }
 
 function ExpenseTracker({ onBack }) {
   const [expenses, setExpenses] = useState([]);
@@ -38,7 +38,7 @@ function ExpenseTracker({ onBack }) {
   const [form, setForm] = useState({ amount: '', category: categories[0], description: '', date: new Date().toISOString().slice(0, 10) });
 
   const load = () => api.get(`expenses?month=${currentMonth}`).then(response => setExpenses(response.data || [])).catch(() => setError('Unable to load expenses.')).finally(() => setLoading(false));
-  useEffect(load, []);
+  useEffect(() => { load(); }, []);
   const totals = useMemo(() => expenses.reduce((result, expense) => ({ ...result, [expense.category]: (result[expense.category] || 0) + Number(expense.amount) }), {}), [expenses]);
   const maxTotal = Math.max(...Object.values(totals), 1);
 

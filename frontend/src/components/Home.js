@@ -14,7 +14,7 @@ const needs = [
   ['Rent receipts', 'Keep these for HRA review.', Receipt],
 ];
 
-function money(value) { return `₹${Number(value || 0).toLocaleString('en-IN')}`; }
+function money(value) { return `₹${Number(value || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`; }
 
 function Home({ user, onStart, onHistory, onViewResult, onOpenDocuments }) {
   const [data, setData] = useState({ latest: null, recent: [], reminders: [] });
