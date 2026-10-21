@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import './auth.css';
 import api from '../services/api';
 import { Camera, CheckCircle2, Mail, ShieldCheck } from 'lucide-react';
 import secureFinanceIllustration from '../assets/secure-finance.svg';
@@ -7,7 +8,8 @@ import { containsPanOrAadhaar, PII_FIELD_MESSAGE } from '../utils/piiValidator';
 
 const formVariants = {
   hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { staggerChildren: 0.1 } }
+  visible: { opacity: 1, y: 0, transition: { staggerChildren: 0.1 } },
+  shake: { x: [0, -7, 7, -4, 4, 0], transition: { duration: 0.4 } }
 };
 
 const itemVariants = {
@@ -19,6 +21,52 @@ const shakeVariants = {
   idle: { x: 0 },
   shake: { x: [0, -6, 6, -4, 4, 0], transition: { duration: 0.4 } },
 };
+
+function AuthPageFrame({ children, className = '' }) {
+  return (
+    <div className={`auth-page ${className}`}>
+      <div className="auth-page-chips" aria-hidden="true">
+        <span className="auth-chip auth-chip--one">Section 80C <b>₹1.5L</b></span>
+        <span className="auth-chip auth-chip--two">Standard deduction <b>₹75,000</b></span>
+        <span className="auth-chip auth-chip--three">87A rebate <b>Active</b></span>
+        <span className="auth-chip auth-chip--four">HRA <b>Exempt</b></span>
+        <span className="auth-chip auth-chip--five">NPS 80CCD <b>₹50K</b></span>
+      </div>
+      <div className="auth-layout">
+        <section className="auth-hero" aria-label="TaxMate AI">
+          <p className="auth-hero-brand">
+            <svg width="34" height="34" viewBox="0 0 40 40" aria-hidden="true">
+              <rect width="40" height="40" rx="12" fill="#34E5A8" />
+              <path d="M11 27l7-7 5 5 7-9" stroke="#06231a" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            </svg>
+            <span>TaxMate AI</span>
+          </p>
+          <h1>Old regime ya New? Dekho kaunsa zyada bachata hai.</h1>
+          <p className="auth-hero-copy">Apni income daalo, deductions jodo, aur seconds mein pata karo kaunsa tax regime aapke paise bachayega.</p>
+          <div className="auth-demo-card" aria-label="Illustrative tax comparison">
+            <div className="auth-demo-heading"><span>Annual income</span><b>₹12L</b></div>
+            <div className="auth-demo-bars">
+              <div className="auth-demo-bar auth-demo-bar--old"><span>₹1,54,440</span><i /><small>Old regime</small></div>
+              <div className="auth-demo-bar auth-demo-bar--new"><span>₹93,600</span><i /><small>New regime</small></div>
+            </div>
+            <div className="auth-demo-verdict"><span>Illustrative difference</span><strong>₹60,840</strong></div>
+          </div>
+          <p className="auth-hero-note">Sample illustration with ₹1.5L 80C deduction. Not tax advice.</p>
+        </section>
+        <section className="auth-content" aria-label="Account access">
+          <div className="auth-mobile-brand" aria-hidden="true">
+            <svg width="34" height="34" viewBox="0 0 40 40">
+              <rect width="40" height="40" rx="12" fill="#34E5A8" />
+              <path d="M11 27l7-7 5 5 7-9" stroke="#06231a" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            </svg>
+            <span>TaxMate AI</span>
+          </div>
+          {children}
+        </section>
+      </div>
+    </div>
+  );
+}
 
 function Auth({ onUserCreated, onVerificationPending, initialVerification = false }) {
   const [isLogin, setIsLogin] = useState(true);
@@ -648,13 +696,13 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
 
   if (resetMode) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-transparent px-5 py-12">
-        <motion.div className="fintech-card w-full max-w-md p-7 sm:p-9" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+      <AuthPageFrame className="auth-page--recovery">
+        <motion.div className="fintech-card auth-card auth-state-card w-full max-w-md p-7 sm:p-9" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
           <p className="text-sm font-bold uppercase tracking-[0.16em] text-navy-500">Account recovery</p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy-900">Reset your password</h1>
           <p className="mt-3 text-sm leading-6 text-slate-600">Enter your registered email and we will send a six-digit reset code.</p>
-          {error && <div className="mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700" role="alert">{error}</div>}
-          {registrationSuccess && <div className="mt-5 rounded-lg border border-mint-500/30 bg-mint-50 px-4 py-3 text-sm font-medium text-mint-700" role="status">{registrationSuccess}</div>}
+          {error && <div className="auth-alert auth-alert--error mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700" role="alert">{error}</div>}
+          {registrationSuccess && <div className="auth-alert auth-alert--success mt-5 rounded-lg border border-mint-500/30 bg-mint-50 px-4 py-3 text-sm font-medium text-mint-700" role="status">{registrationSuccess}</div>}
           <form className="mt-7 space-y-4" onSubmit={resetVerified ? completePasswordReset : resetCodeSent ? verifyPasswordReset : requestPasswordReset}>
             <label className="form-group block text-sm font-semibold text-slate-700" htmlFor="reset-email">Email address<input id="reset-email" type="email" value={formData.email} onChange={event => setFormData(previous => ({ ...previous, email: event.target.value }))} required className="mt-1 w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-navy-500" /></label>
             {!resetVerified && resetCodeSent && <label className="form-group block text-sm font-semibold text-slate-700" htmlFor="reset-otp">Reset code<input id="reset-otp" type="tel" inputMode="numeric" pattern="[0-9]*" maxLength="6" value={resetOtp} onChange={event => setResetOtp(event.target.value.replace(/\D/g, '').slice(0, 6))} required className="mt-1 w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm tracking-[0.4em] outline-none focus:border-navy-500" /></label>}
@@ -664,19 +712,19 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
           {!resetVerified && resetCodeSent && <button type="button" className="mt-4 w-full text-sm font-semibold text-navy-700" onClick={requestPasswordReset} disabled={loading || resendCountdown > 0}>{resendCountdown ? `Resend in ${resendCountdown}s` : 'Resend code'}</button>}
           <button type="button" className="mt-5 w-full text-sm font-semibold text-navy-700" onClick={() => setResetMode(false)}>Back to login</button>
         </motion.div>
-      </div>
+      </AuthPageFrame>
     );
   }
 
   if (isVerifying && (initialVerification || loginOtpPending)) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-5 py-12">
-        <motion.div className="fintech-card w-full max-w-md p-7 sm:p-9" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+      <AuthPageFrame className="auth-page--verification">
+        <motion.div className="fintech-card auth-card auth-state-card w-full max-w-md p-7 sm:p-9" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
           <motion.div initial={{ scale: 0.7, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="mb-8 flex h-12 w-12 items-center justify-center rounded-xl bg-navy-50 text-navy-700"><Mail className="h-6 w-6" /></motion.div>
           <p className="text-sm font-bold uppercase tracking-[0.16em] text-navy-500">Account security</p>
           <motion.h1 animate={{ opacity: [0.8, 1, 0.8] }} transition={{ duration: 3.5, repeat: Infinity }} className="mt-2 text-3xl font-bold tracking-tight text-navy-900">Check your email</motion.h1>
           <p className="mt-3 text-sm leading-6 text-slate-600">Enter the six-digit code sent to <span className="font-semibold text-slate-800">{formData.email}</span>.</p>
-          {error && <div className="mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700" role="alert">{error}</div>}
+          {error && <div className="auth-alert auth-alert--error mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700" role="alert">{error}</div>}
           <form onSubmit={handleSubmit} className="mt-8">
             <motion.div variants={shakeVariants} animate={error ? 'shake' : 'idle'} className="grid grid-cols-6 gap-1 sm:gap-2" onPaste={(e) => { const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6); if (pasted) { e.preventDefault(); setOtp(pasted); document.querySelector(`[data-otp-index="${Math.min(pasted.length, 5)}"]`)?.focus(); } }}>
               {Array.from({ length: 6 }, (_, index) => (
@@ -691,63 +739,68 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
           <motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.7, type: 'spring' }} className="mt-6 flex items-center justify-center gap-2 text-xs font-medium text-mint-700"><CheckCircle2 className="h-4 w-4" /> Verification is secure</motion.div>
           <p className="mt-6 text-center text-sm text-slate-500"><span className="cursor-pointer font-semibold text-navy-700 hover:text-navy-900" onClick={() => { setIsVerifying(false); setIsLogin(true); setError(''); }}>Use a different account</span></p>
         </motion.div>
-      </div>
+      </AuthPageFrame>
     );
   }
 
   return (
-      <div className="flex min-h-screen items-center justify-center bg-transparent px-5 py-12">
-      <div className="grid w-full max-w-6xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft lg:grid-cols-2">
+      <AuthPageFrame>
+      <div className="grid auth-account-grid w-full max-w-6xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft lg:grid-cols-2">
       <motion.div 
-        className="p-7 sm:p-9 lg:p-12"
+        className="auth-card auth-account-card p-7 sm:p-9 lg:p-12"
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.4, ease: 'easeOut' }}
       >
         <p className="auth-brand text-sm font-bold uppercase tracking-[0.16em] text-navy-500"><svg width="34" height="34" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="12" fill="#34E5A8" /><path d="M11 27l7-7 5 5 7-9" stroke="#06231a" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" fill="none" /></svg><span>TaxMate AI</span></p>
+        <div className={`auth-tabs ${isLogin ? '' : 'auth-tabs--register'}`} role="tablist" aria-label="Account access">
+          <span className="auth-tabs-pill" aria-hidden="true" />
+          <button type="button" role="tab" aria-selected={isLogin} onClick={() => setIsLogin(true)}>Login</button>
+          <button type="button" role="tab" aria-selected={!isLogin} onClick={() => setIsLogin(false)}>Register</button>
+        </div>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy-900">{isLogin ? 'Welcome back' : 'Create your account'}</h1>
         <p className="mt-3 text-sm leading-6 text-slate-600">{isLogin ? 'Log in to access your personal tax workspace.' : 'Set up your secure workspace in a few minutes.'}</p>
         
-        {error && <div className="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700" role="alert">{error}</div>}
-        {registrationSuccess && <div className="mt-6 rounded-lg border border-mint-500/30 bg-mint-50 px-4 py-3 text-sm font-medium text-mint-700" role="status">{registrationSuccess}</div>}
+        {error && <div className="auth-alert auth-alert--error mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700" role="alert">{error}</div>}
+        {registrationSuccess && <div className="auth-alert auth-alert--success mt-6 rounded-lg border border-mint-500/30 bg-mint-50 px-4 py-3 text-sm font-medium text-mint-700" role="status">{registrationSuccess}</div>}
 
-        <motion.form className="mt-7 space-y-4 text-left" onSubmit={isLogin ? handleSubmit : handleSendOtp} variants={formVariants} initial="hidden" animate={error ? 'shake' : 'visible'}>
+        <motion.form className="mt-7 space-y-4 text-left auth-account-form" onSubmit={isLogin ? handleSubmit : handleSendOtp} variants={formVariants} initial="hidden" animate={error ? 'shake' : 'visible'}>
           {!isLogin && (
             <>
-              <motion.div variants={itemVariants} className="form-group">
+              <motion.div variants={itemVariants} className="form-group auth-field auth-field--name">
                 <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="name">Full name</label><input id="name" type="text" name="name" placeholder="Amaan S. Yadav" value={formData.name} onChange={handleChange} required className={`w-full rounded-lg border-2 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-navy-500 focus:bg-white focus:ring-4 focus:ring-navy-100 ${fieldErrors.name ? 'border-red-400' : 'border-slate-200'}`} />
                 {fieldErrors.name && <div className="mt-1 text-xs font-medium text-red-600">{fieldErrors.name}</div>}
               </motion.div>
 
-              <motion.div variants={itemVariants} className="form-group">
+              <motion.div variants={itemVariants} className="form-group auth-field auth-field--pan">
                 <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="pan">PAN card</label><div className="flex gap-2"><input id="pan" type="text" name="pan" placeholder="ABCDE1234F" value={formData.pan} onChange={handleChange} required maxLength="10" className={`min-w-0 flex-1 rounded-lg border-2 bg-slate-50 px-4 py-3 text-sm uppercase outline-none focus:border-navy-500 ${fieldErrors.pan || panError ? 'border-red-400' : panVerified ? 'border-mint-500' : 'border-slate-200'}`} /><button type="button" onClick={verifyPanFormat} className="rounded-lg bg-navy-50 px-3 text-xs font-bold text-navy-700">Verify</button></div>{panVerified && <motion.p initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="mt-1 flex items-center gap-1 text-xs font-semibold text-mint-700"><CheckCircle2 className="h-3.5 w-3.5" /> Format verified</motion.p>}{panError && <p className="mt-1 text-xs font-medium text-red-600">{panError}</p>}<p className="mt-1 text-xs text-slate-500">Structural format check only; this does not verify PAN details with a government database.</p>
                 {fieldErrors.pan && <div className="mt-1 text-xs font-medium text-red-600">{fieldErrors.pan}</div>}
               </motion.div>
 
-              <motion.div variants={itemVariants} className="form-group">
+              <motion.div variants={itemVariants} className="form-group auth-field auth-field--phone">
                 <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="phone">Phone number</label><input id="phone" type="tel" name="phone" placeholder="9876543210" value={formData.phone} onChange={handleChange} required className={`w-full rounded-lg border-2 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-navy-500 focus:bg-white focus:ring-4 focus:ring-navy-100 ${fieldErrors.phone ? 'border-red-400' : 'border-slate-200'}`} />
                 {fieldErrors.phone && <div className="mt-1 text-xs font-medium text-red-600">{fieldErrors.phone}</div>}
               </motion.div>
 
-              <motion.div variants={itemVariants} className="form-group">
+              <motion.div variants={itemVariants} className="form-group auth-field auth-field--age">
                 <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="age">Age</label><input id="age" type="number" name="age" placeholder="30" value={formData.age} onChange={handleChange} required className={`w-full rounded-lg border-2 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-navy-500 focus:bg-white focus:ring-4 focus:ring-navy-100 ${fieldErrors.age ? 'border-red-400' : 'border-slate-200'}`} />
                 {fieldErrors.age && <div className="mt-1 text-xs font-medium text-red-600">{fieldErrors.age}</div>}
               </motion.div>
             </>
           )}
 
-          <motion.div variants={itemVariants} className="form-group">
+          <motion.div variants={itemVariants} className="form-group auth-field auth-field--email">
             <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="email">Email address</label>
             <div className="flex gap-2"><input id="email" type="email" name="email" placeholder="you@example.com" value={formData.email} onChange={handleChange} required className={`min-w-0 flex-1 rounded-lg border-2 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-navy-500 focus:bg-white focus:ring-4 focus:ring-navy-100 ${fieldErrors.email ? 'border-red-400' : 'border-slate-200'}`} />{!isLogin && <button type="button" className="rounded-lg bg-navy-50 px-3 text-xs font-bold text-navy-700 disabled:cursor-not-allowed disabled:opacity-50" onClick={handleSendOtp} disabled={!emailReadyForOtp || loading || registrationOtpPending}>{registrationOtpVerified ? 'Verified' : registrationOtpPending ? 'Sent' : 'Send OTP'}</button>}</div>
             {fieldErrors.email && <div className="mt-1 text-xs font-medium text-red-600">{fieldErrors.email}</div>}
             {!isLogin && !registrationOtpPending && !registrationOtpVerified && <p className="mt-1 text-xs text-slate-500">Enter a valid email to begin registration OTP verification.</p>}
             {!isLogin && (registrationOtpPending || registrationOtpVerified) && (
-              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-4 rounded-xl border border-navy-100 bg-navy-50 p-4">
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="auth-email-verification mt-4 rounded-xl border border-navy-100 bg-navy-50 p-4">
                 <div className="flex items-center gap-2 text-sm font-semibold text-navy-900"><Mail className="h-4 w-4 text-navy-500" />{registrationOtpVerified ? 'Email verified ✓' : 'Check your email'}</div>
                 <p className="mt-1 text-xs text-slate-600">Enter the 6-digit code sent to {formData.email}.</p>
-                <motion.div variants={shakeVariants} animate={error ? 'shake' : 'idle'} className="mt-3 grid grid-cols-6 gap-1 sm:gap-2" onPaste={(e) => { const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6); if (pasted) { e.preventDefault(); setOtp(pasted); } }}>
+                <motion.div variants={shakeVariants} animate={error ? 'shake' : 'idle'} className="auth-otp-grid mt-3 grid grid-cols-6 gap-1 sm:gap-2" onPaste={(e) => { const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6); if (pasted) { e.preventDefault(); setOtp(pasted); } }}>
                   {Array.from({ length: 6 }, (_, index) => (
-                    <input key={index} data-otp-index={index} disabled={registrationOtpVerified} className={`h-11 min-w-0 w-full rounded-lg border-2 bg-white text-center text-lg font-bold text-navy-900 outline-none ${error ? 'border-red-400 bg-red-50' : registrationOtpVerified ? 'border-mint-500' : 'border-slate-200'} ${registrationOtpVerified ? 'cursor-default' : ''}`} type="tel" inputMode="numeric" pattern="[0-9]*" maxLength="1" value={otp[index] || ''} onInput={(e) => { const digit = e.currentTarget.value.replace(/\D/g, '').slice(-1); const next = otp.split(''); next[index] = digit; setOtp(next.join('').slice(0, 6)); if (digit && index < 5) document.querySelector(`[data-otp-index="${index + 1}"]`)?.focus(); setError(''); }} onKeyDown={(e) => { if (e.key === 'Backspace' && !otp[index] && index > 0) document.querySelector(`[data-otp-index="${index - 1}"]`)?.focus(); }} autoComplete={index === 0 ? 'one-time-code' : 'off'} autoFocus={index === 0} aria-label={`Digit ${index + 1} of 6`} />
+                    <input key={index} data-otp-index={index} disabled={registrationOtpVerified} className={`auth-otp-input h-11 min-w-0 w-full rounded-lg border-2 bg-white text-center text-lg font-bold text-navy-900 outline-none ${error ? 'border-red-400 bg-red-50' : registrationOtpVerified ? 'border-mint-500' : 'border-slate-200'} ${registrationOtpVerified ? 'cursor-default' : ''}`} type="tel" inputMode="numeric" pattern="[0-9]*" maxLength="1" value={otp[index] || ''} onInput={(e) => { const digit = e.currentTarget.value.replace(/\D/g, '').slice(-1); const next = otp.split(''); next[index] = digit; setOtp(next.join('').slice(0, 6)); if (digit && index < 5) document.querySelector(`[data-otp-index="${index + 1}"]`)?.focus(); setError(''); }} onKeyDown={(e) => { if (e.key === 'Backspace' && !otp[index] && index > 0) document.querySelector(`[data-otp-index="${index - 1}"]`)?.focus(); }} autoComplete={index === 0 ? 'one-time-code' : 'off'} autoFocus={index === 0} aria-label={`Digit ${index + 1} of 6`} />
                   ))}
                 </motion.div>
                 <div className="mt-3 flex items-center justify-between gap-3">
@@ -761,50 +814,51 @@ function Auth({ onUserCreated, onVerificationPending, initialVerification = fals
             )}
           </motion.div>
 
-          <motion.div variants={itemVariants} className="form-group">
+          <motion.div variants={itemVariants} className={`form-group auth-field auth-field--password ${isLogin ? 'auth-field--login-password' : ''}`}>
             <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="password">Password</label><input id="password" type="password" name="password" placeholder="Your secure password" value={formData.password} onChange={handleChange} required className={`w-full rounded-lg border-2 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-navy-500 focus:bg-white focus:ring-4 focus:ring-navy-100 ${fieldErrors.password ? 'border-red-400' : 'border-slate-200'}`} />
             {fieldErrors.password && <div className="mt-1 text-xs font-medium text-red-600">{fieldErrors.password}</div>}
           </motion.div>
-          {isLogin && <button type="button" className="-mt-2 text-right text-sm font-semibold text-navy-700 hover:text-navy-900" onClick={startPasswordReset}>Forgot Password?</button>}
-          {!isLogin && <motion.div variants={itemVariants} className="form-group"><label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="confirm_password">Confirm password</label><input id="confirm_password" type="password" name="confirm_password" placeholder="Repeat your password" value={formData.confirm_password} onChange={handleChange} required className={`w-full rounded-lg border-2 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-navy-500 ${formData.confirm_password && formData.confirm_password !== formData.password ? 'border-red-400' : 'border-slate-200'}`} />{formData.confirm_password && formData.confirm_password !== formData.password && <div className="mt-1 text-xs font-medium text-red-600">Passwords do not match</div>}</motion.div>}
+          {isLogin && <button type="button" className="auth-forgot -mt-2 text-right text-sm font-semibold text-navy-700 hover:text-navy-900" onClick={startPasswordReset}>Forgot Password?</button>}
+          {!isLogin && <motion.div variants={itemVariants} className="form-group auth-field auth-field--confirm-password"><label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="confirm_password">Confirm password</label><input id="confirm_password" type="password" name="confirm_password" placeholder="Repeat your password" value={formData.confirm_password} onChange={handleChange} required className={`w-full rounded-lg border-2 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-navy-500 ${formData.confirm_password && formData.confirm_password !== formData.password ? 'border-red-400' : 'border-slate-200'}`} />{formData.confirm_password && formData.confirm_password !== formData.password && <div className="mt-1 text-xs font-medium text-red-600">Passwords do not match</div>}</motion.div>}
           
           {!isLogin && (
-            <motion.div variants={itemVariants} className="text-xs text-slate-500">
-              <div className="mb-1 flex justify-between"><span>Password strength</span><span className={passwordScore >= 4 ? 'text-mint-700' : passwordScore >= 2 ? 'text-amber-600' : 'text-red-600'}>{passwordScore >= 4 ? 'Strong' : passwordScore >= 2 ? 'Medium' : 'Weak'}</span></div><div className="flex h-1.5 gap-1"><span className={`flex-1 rounded-full ${passwordScore >= 1 ? 'bg-red-500' : 'bg-slate-200'}`} /><span className={`flex-1 rounded-full ${passwordScore >= 2 ? 'bg-amber-500' : 'bg-slate-200'}`} /><span className={`flex-1 rounded-full ${passwordScore >= 4 ? 'bg-mint-500' : 'bg-slate-200'}`} /></div><p className="mt-2">Must include uppercase letter, number, and special character.</p>
+            <motion.div variants={itemVariants} className="auth-password-meter text-xs text-slate-500">
+              <div className="auth-meter-heading mb-1 flex justify-between"><span>Password strength</span><span className={passwordScore >= 4 ? 'text-mint-700' : passwordScore >= 2 ? 'text-amber-600' : 'text-red-600'}>{passwordScore >= 4 ? 'Strong' : passwordScore >= 2 ? 'Medium' : 'Weak'}</span></div><div className="auth-meter-bars flex h-1.5 gap-1"><span className={`flex-1 rounded-full ${passwordScore >= 1 ? 'bg-red-500' : 'bg-slate-200'}`} /><span className={`flex-1 rounded-full ${passwordScore >= 2 ? 'bg-amber-500' : 'bg-slate-200'}`} /><span className={`flex-1 rounded-full ${passwordScore >= 3 ? 'bg-lime-500' : 'bg-slate-200'}`} /><span className={`flex-1 rounded-full ${passwordScore >= 4 ? 'bg-mint-500' : 'bg-slate-200'}`} /></div><p className="mt-2">Must include uppercase letter, number, and special character.</p>
             </motion.div>
           )}
 
           {!isLogin && <>
-            <motion.div variants={itemVariants} className="form-group"><span className="mb-1.5 block text-sm font-semibold text-slate-700">Employment type</span><div className="flex flex-wrap gap-4">{['Salaried', 'Self-employed', 'Business'].map(option => <label key={option} className="flex items-center gap-2 text-sm text-slate-600"><input type="radio" name="employment_type" value={option} checked={employmentType === option} onChange={(e) => setEmploymentType(e.target.value)} />{option}</label>)}</div></motion.div>
-            <motion.div variants={itemVariants} className="form-group"><label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="financial_year">Financial year</label><select id="financial_year" value="FY 2025-26 (AY 2026-27)" disabled className="w-full rounded-lg border-2 border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-600"><option>FY 2025-26 (AY 2026-27)</option></select></motion.div>
-            <motion.div variants={itemVariants} className="form-group"><label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="employer_name">Employer / company name <span className="font-normal text-slate-400">(optional)</span></label><input id="employer_name" type="text" name="employer_name" maxLength="150" placeholder="Your company" value={formData.employer_name} onChange={handleChange} className="w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-navy-500" /></motion.div>
-            <motion.div variants={itemVariants}><label className="flex items-start gap-3 text-sm leading-6 text-slate-600"><input type="checkbox" checked={panAadhaarLinked} onChange={(e) => setPanAadhaarLinked(e.target.checked)} className="mt-1" /> <span>My PAN is linked with Aadhaar as required by the Income Tax Department.<span className="block text-xs text-slate-400">Self-declaration only; no government database verification is performed.</span></span></label></motion.div>
-            <motion.div variants={itemVariants}><label className="flex items-center gap-3 text-sm text-slate-600"><input type="checkbox" checked={emailRemindersEnabled} onChange={(e) => setEmailRemindersEnabled(e.target.checked)} />Notify me about tax filing deadlines and updates</label></motion.div>
-            <motion.div variants={itemVariants} className="flex flex-wrap items-center gap-3"><div className="relative h-20 w-20 overflow-hidden rounded-full border-2 border-slate-200 bg-slate-100">{profilePhotoPreview ? <img src={profilePhotoPreview} alt="Profile preview" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-2xl">👤</div>}<Camera className="absolute bottom-0 right-0 rounded-full bg-navy-700 p-1 text-white" size={24} /></div><label className="cursor-pointer rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-navy-700">Take Photo<input type="file" accept="image/*" capture="environment" onChange={handlePhotoChange} className="hidden" /></label><label className="cursor-pointer rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-navy-700">Choose from Gallery<input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" /></label><span className="w-full text-xs text-slate-500">Optional. Images only, maximum 2MB.</span></motion.div>
-            <motion.div variants={itemVariants}><label className="flex items-start gap-3 text-sm leading-6 text-slate-600"><input type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} className="mt-1" /> <span>I agree to the <a className="font-semibold text-navy-700" href="/terms">Terms of Service</a> and <a className="font-semibold text-navy-700" href="/privacy">Privacy Policy</a>.</span></label></motion.div>
+            <motion.div variants={itemVariants} className="form-group auth-field auth-field--employment"><span className="mb-1.5 block text-sm font-semibold text-slate-700">Employment type</span><div className="auth-employment-grid flex flex-wrap gap-4">{['Salaried', 'Self-employed', 'Business'].map(option => <label key={option} className="auth-employment-option flex items-center gap-2 text-sm text-slate-600"><input type="radio" name="employment_type" value={option} checked={employmentType === option} onChange={(e) => setEmploymentType(e.target.value)} /><span>{option}</span></label>)}</div></motion.div>
+            <motion.div variants={itemVariants} className="form-group auth-field auth-field--financial-year"><label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="financial_year">Financial year</label><select id="financial_year" value="FY 2025-26 (AY 2026-27)" disabled className="w-full rounded-lg border-2 border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-600"><option>FY 2025-26 (AY 2026-27)</option></select></motion.div>
+            <motion.div variants={itemVariants} className="form-group auth-field auth-field--employer"><label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="employer_name">Employer / company name <span className="font-normal text-slate-400">(optional)</span></label><input id="employer_name" type="text" name="employer_name" maxLength="150" placeholder="Your company" value={formData.employer_name} onChange={handleChange} className="w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-navy-500" /></motion.div>
+            <motion.div variants={itemVariants} className="auth-check-row auth-check-row--aadhaar"><label className="flex items-start gap-3 text-sm leading-6 text-slate-600"><input type="checkbox" checked={panAadhaarLinked} onChange={(e) => setPanAadhaarLinked(e.target.checked)} className="mt-1" /> <span>My PAN is linked with Aadhaar as required by the Income Tax Department.<span className="block text-xs text-slate-400">Self-declaration only; no government database verification is performed.</span></span></label></motion.div>
+            <motion.div variants={itemVariants} className="auth-check-row auth-check-row--reminders"><label className="flex items-center gap-3 text-sm text-slate-600"><input type="checkbox" checked={emailRemindersEnabled} onChange={(e) => setEmailRemindersEnabled(e.target.checked)} />Notify me about tax filing deadlines and updates</label></motion.div>
+            <motion.div variants={itemVariants} className="auth-photo-block flex flex-wrap items-center gap-3"><div className="auth-photo-preview relative h-20 w-20 overflow-hidden rounded-full border-2 border-slate-200 bg-slate-100">{profilePhotoPreview ? <img src={profilePhotoPreview} alt="Profile preview" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-2xl">👤</div>}<Camera className="absolute bottom-0 right-0 rounded-full bg-navy-700 p-1 text-white" size={24} /></div><label className="auth-photo-action cursor-pointer rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-navy-700">Take Photo<input type="file" accept="image/*" capture="environment" onChange={handlePhotoChange} className="hidden" /></label><label className="auth-photo-action cursor-pointer rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-navy-700">Choose from Gallery<input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" /></label><span className="auth-photo-note w-full text-xs text-slate-500">Optional. Images only, maximum 2MB.</span></motion.div>
+            <motion.div variants={itemVariants} className="auth-check-row auth-check-row--terms"><label className="flex items-start gap-3 text-sm leading-6 text-slate-600"><input type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} className="mt-1" /> <span>I agree to the <a className="font-semibold text-navy-700" href="/terms">Terms of Service</a> and <a className="font-semibold text-navy-700" href="/privacy">Privacy Policy</a>.</span></label></motion.div>
           </>}
           
           <motion.button 
-            className="fintech-button w-full" 
+            className="fintech-button auth-submit w-full"
             type={isLogin ? 'submit' : 'button'} 
             disabled={loading || (!isLogin && (!registrationReady || !emailVerified))}
             onClick={isLogin ? undefined : finishRegistration}
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.98 }}
           >
-            {loading ? 'Please wait...' : (isLogin ? 'Log in' : 'Create account')}
+            {loading && <span className="auth-submit-spinner" aria-hidden="true" />}
+            <span>{loading ? 'Please wait...' : (isLogin ? 'Log in' : 'Create account')}</span>
           </motion.button>
         </motion.form>
 
-        <p className="mt-7 text-center text-sm text-slate-500">
+        <p className="auth-switch-prompt mt-7 text-center text-sm text-slate-500">
           {isLogin ? "Don't have an account?" : "Already have an account?"} <span className="cursor-pointer font-semibold text-navy-700 hover:text-navy-900" onClick={() => setIsLogin(!isLogin)}>
             {isLogin ? ' Register' : ' Log In'}
           </span>
         </p>
       </motion.div>
-      <div className="hidden bg-navy-50 p-10 lg:flex lg:flex-col lg:justify-center"><div className="max-w-sm"><div className="mb-8 inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-navy-700"><ShieldCheck className="h-4 w-4 text-mint-700" /> Secure workspace</div><h2 className="text-3xl font-bold leading-tight text-navy-900">Your financial picture, protected.</h2><p className="mt-4 leading-7 text-slate-600">A focused workspace for making better tax decisions with confidence.</p><img src={secureFinanceIllustration} alt="Person reviewing a secure financial dashboard" className="mt-8 w-full" /></div></div>
+      <div className="hidden bg-navy-50 p-10 lg:flex lg:flex-col lg:justify-center auth-legacy-visual"><div className="max-w-sm"><div className="mb-8 inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-navy-700"><ShieldCheck className="h-4 w-4 text-mint-700" /> Secure workspace</div><h2 className="text-3xl font-bold leading-tight text-navy-900">Your financial picture, protected.</h2><p className="mt-4 leading-7 text-slate-600">A focused workspace for making better tax decisions with confidence.</p><img src={secureFinanceIllustration} alt="Person reviewing a secure financial dashboard" className="mt-8 w-full" /></div></div>
       </div>
-    </div>
+      </AuthPageFrame>
   );
 }
 
